@@ -4,22 +4,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-PyQt6 desktop GUI (macOS) for flashing HDZero VTX firmware. Wraps the `flashrom` CLI driving a CH341A USB SPI programmer against a 1 MiB W25Q80 chip.
+PyQt6 desktop GUI (Linux) for flashing HDZero VTX firmware. Wraps the `flashrom` CLI driving a CH341A USB SPI programmer against a 1 MiB W25Q80 chip. Forked from [Gunther Votteler's macOS tool](https://github.com/gvotteler) under MIT.
 
 ## Run / Build
 
-No `requirements.txt`, `Makefile`, or PyInstaller spec is checked in. Manual setup:
+No `requirements.txt` or `pyproject.toml` is checked in yet (see issue #7). Manual setup:
 
 ```bash
 pip install PyQt6 requests
 python3 main.py
 ```
 
-Runtime dep on `flashrom` CLI (`brew install flashrom`). `flash_ops.find_flashrom()` probes Homebrew + `/usr/local` + `/usr/bin` paths, falls back to `shutil.which`.
+Runtime dep on the `flashrom` CLI:
 
-Distribution is a prebuilt `.app` bundle (see `HDZeroProgrammerTool_v2.zip`, `app_icon.icns`, `AppIcon.iconset/`, `qt.conf`, `qt_plugin_path_hook.py`). Bundling is PyInstaller-based — `resource_path()` and `qt_plugin_path_hook.py` use `sys._MEIPASS` to resolve assets when frozen. README ships codesign/quarantine steps end users run on the bundle, not build steps.
+```bash
+sudo apt install flashrom    # Debian/Ubuntu
+sudo dnf install flashrom    # Fedora/RHEL
+sudo pacman -S flashrom      # Arch
+```
 
-No PyInstaller `.spec` is checked in. To rebuild the bundle from scratch you would invoke PyInstaller against `main.py` with `--windowed --icon app_icon.icns`, bundling all `*.png`, `Readme.md`/`README.md`, `qt.conf`, and `qt_plugin_path_hook.py` as data files, then re-run the README codesign steps. Verify on a clean machine before shipping.
+`flash_ops.find_flashrom()` probes `/usr/{bin,sbin}`, `/usr/local/{bin,sbin}`, Linuxbrew, then macOS Homebrew, falling back to `shutil.which`. Privileged invocation goes through `run_admin()` which prefers `pkexec` (polkit GUI prompt), then `sudo -A` if `SUDO_ASKPASS` is set, then non-interactive `sudo` as a last resort. A polkit agent (gnome-shell, plasma, lxpolkit, etc.) is required for the standard GUI flow.
+
+Distribution target is an **AppImage** (planned, issue #8). The repository still contains macOS bundle leftovers (`app_icon.icns`, `AppIcon.iconset/`, `qt.conf`, `qt_plugin_path_hook.py`, `HDZeroProgrammerTool_v2.zip`); see issue #9 for cleanup. `resource_path()` and `qt_plugin_path_hook.py` use `sys._MEIPASS`, which works for both PyInstaller and AppImage's python-appimage builds.
 
 ## Architecture
 
@@ -27,7 +33,7 @@ Three files, one Qt event loop, worker threads for blocking I/O.
 
 - `main.py` — `MainWindow` owns the three tabs and the high-level `start_backup` / `start_flash` orchestration. Owns `FlashWorker` / `BackupWorker` lifetimes (assigned to `self.worker` / `self.bkw` to keep QThreads alive).
 - `internet_panel.py` — `InternetPanel` tab + four `QThread` HTTP workers (`LoadDevicesWorker`, `LoadFirmwaresWorker`, `LoadImageWorker`, `DownloadFirmwareWorker`) hitting `HDZERO_API_BASE` (default `https://hdzero.go-next.co`, override via env var). Endpoints: `/api/devices`, `/api/firmwares/{device_id}`. Selecting a firmware downloads to a temp `.bin`, then emits `flashRequested`. Two status surfaces in this panel are easy to confuse: `lbl_state` is the short single-line status above the phase line; `lbl_phase` is the "Wait - …" phase indicator written by `set_phase()` and driven by `FlashWorker.status`. The `status_box` `QTextEdit` is the verbose log mirror.
-- `flash_ops.py` — `flashrom` discovery, `make_padded_image_1mib` (pads firmware to 1 MiB with `0xFF`, mandatory for W25Q80), and the `FlashWorker` / `BackupWorker` QThreads. Privileged `flashrom` invocation goes through `run_admin()` which shells out to `osascript` `do shell script ... with administrator privileges` — single GUI password prompt per op (deliberate UX choice; do not split a flash into multiple privileged calls).
+- `flash_ops.py` — `flashrom` discovery, `make_padded_image_1mib` (pads firmware to 1 MiB with `0xFF`, mandatory for W25Q80), and the `FlashWorker` / `BackupWorker` QThreads. Privileged `flashrom` invocation goes through `run_admin()` (pkexec → sudo -A → sudo -n → clear-error fallback) — single GUI password prompt per op (deliberate UX choice; do not split a flash into multiple privileged calls).
 
 ### Cross-panel signal wiring (`MainWindow.__init__`)
 
@@ -49,6 +55,8 @@ When adding a new flash trigger, follow this pattern: emit a request signal from
 ## Gotchas
 
 - Anything blocking (HTTP, `flashrom`, file I/O > a few KB) must run in a `QThread`, not on the main thread — every existing worker follows the `QThread` + `pyqtSignal` pattern.
-- `resource_path()` lives in `internet_panel.py` and is imported by `main.py`; reuse it for any new bundled asset so PyInstaller frozen builds keep working.
+- `run_admin()` wraps the command in `sh -c` and passes it to `pkexec` / `sudo`. Arguments are still built as shell strings by `FlashWorker` and `BackupWorker`; if you ever take untrusted input into one of those strings, switch to argv-list construction first. Current inputs (temp file paths, timestamped backup names) are controlled and safe.
+- Without a polkit agent installed, `pkexec` falls through to `sudo` paths which will likely fail under a GUI session that has no TTY. CH341A udev rules (issue #6) avoid the prompt entirely by granting non-root USB access.
+- `resource_path()` lives in `internet_panel.py` and is imported by `main.py`; reuse it for any new bundled asset so frozen builds keep working.
 - README is loaded at runtime by `HelpPanel` — it tries `Readme.md`, `README.md`, `Readme,md` in order. Don't rename the file without updating that list.
 - Spanish comments are scattered through the code; preserve them when editing nearby lines.
