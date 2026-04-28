@@ -42,4 +42,4 @@ Upstream = "https://github.com/gvotteler"
 hdzero-programmer = "main:main"
 
 [tool.setuptools]
-py-modules = ["main", "internet_panel", "flash_ops", "qt_plugin_path_hook"]
+py-modules = ["main", "internet_panel", "flash_ops"]
