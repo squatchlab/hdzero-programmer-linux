@@ -277,11 +277,15 @@ class MainWindow(QWidget):
         self.panel_local.flash_btn.setEnabled(True)
         self.panel_local.btn_backup.setEnabled(True)
 
-if __name__ == "__main__":
+def main() -> int:
     app = QApplication(sys.argv)
     app_icon_path = resource_path("icon256.png")
     if Path(app_icon_path).exists():
         app.setWindowIcon(QIcon(app_icon_path))
     w = MainWindow()
     w.show()
-    sys.exit(app.exec())
+    return app.exec()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
