@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hdzero-programmer"
+version = "0.1.0"
+description = "Linux desktop GUI for flashing HDZero VTX firmware via a CH341A USB SPI programmer."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Gunther Votteler" },
+]
+maintainers = [
+    { name = "bMags" },
+]
+keywords = ["hdzero", "vtx", "fpv", "flashrom", "ch341a", "firmware"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Hardware",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "PyQt6>=6.6,<6.9",
+    "requests>=2.31,<3",
+]
+
+[project.urls]
+Homepage = "https://forgejo.squatch.lab/bmags/hdzero-programmer-linux"
+Upstream = "https://github.com/gvotteler"
+
+[project.gui-scripts]
+hdzero-programmer = "main:main"
+
+[tool.setuptools]
+py-modules = ["main", "internet_panel", "flash_ops", "qt_plugin_path_hook"]

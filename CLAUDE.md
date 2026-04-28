@@ -8,11 +8,13 @@ PyQt6 desktop GUI (Linux) for flashing HDZero VTX firmware. Wraps the `flashrom`
 
 ## Run / Build
 
-No `requirements.txt` or `pyproject.toml` is checked in yet (see issue #7). Manual setup:
+Project metadata lives in `pyproject.toml` (PEP 621); pinned dependencies in `requirements.txt`. The `hdzero-programmer` GUI entrypoint is wired to `main:main`.
 
 ```bash
-pip install PyQt6 requests
-python3 main.py
+pip install --user .          # installs the hdzero-programmer launcher
+hdzero-programmer
+# or run from a checkout without installing
+pip install -r requirements.txt && python3 main.py
 ```
 
 Runtime dep on the `flashrom` CLI:

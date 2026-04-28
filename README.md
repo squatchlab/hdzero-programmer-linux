@@ -39,15 +39,24 @@ Gunther. This fork only adapts it for Linux.
 
 ## Run
 
+Install via pip (recommended):
+
 ```bash
-pip install PyQt6 requests
+pip install --user .
+hdzero-programmer
+```
+
+Or run directly without installing:
+
+```bash
+pip install -r requirements.txt
 python3 main.py
 ```
 
 Override the firmware index API base if needed:
 
 ```bash
-HDZERO_API_BASE=https://your-mirror.example python3 main.py
+HDZERO_API_BASE=https://your-mirror.example hdzero-programmer
 ```
 
 ## Skip the password prompt (optional, recommended)
@@ -84,9 +93,10 @@ into the hicolor icon theme:
 sudo PREFIX=/usr ./packaging/install-desktop.sh   # system-wide
 ```
 
-Until the `hdzero-programmer` console entrypoint ships (issue #7), edit
-the installed `.desktop` file's `Exec=` line to point at
-`python3 /absolute/path/to/main.py` so the menu launcher works.
+The `.desktop` `Exec=` line points at the `hdzero-programmer` console
+script installed by `pip install`. If you run from a checkout without
+installing, edit the installed `.desktop` file's `Exec=` line to
+`python3 /absolute/path/to/main.py`.
 
 ## Usage
 
