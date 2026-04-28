@@ -9,11 +9,18 @@ HDZERO_MAX = 64 * 1024
 FLASH_SIZE_BYTES = 1024 * 1024  # 1 MiB (W25Q80)
 
 FLASHROM_PATHS = [
-    "/opt/homebrew/bin/flashrom",
-    "/opt/homebrew/sbin/flashrom",
+    # Standard Linux distro packages (apt/dnf/pacman) land in /usr/bin or /usr/sbin.
+    "/usr/bin/flashrom",
+    "/usr/sbin/flashrom",
+    # Manually compiled / locally installed builds.
     "/usr/local/bin/flashrom",
     "/usr/local/sbin/flashrom",
-    "/usr/bin/flashrom",
+    # Linuxbrew (homebrew on Linux) — uncommon but supported.
+    "/home/linuxbrew/.linuxbrew/bin/flashrom",
+    "/home/linuxbrew/.linuxbrew/sbin/flashrom",
+    # macOS Homebrew — kept so the source stays cross-platform-compatible.
+    "/opt/homebrew/bin/flashrom",
+    "/opt/homebrew/sbin/flashrom",
 ]
 
 def find_flashrom() -> Optional[str]:
