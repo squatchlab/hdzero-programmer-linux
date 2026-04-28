@@ -27,7 +27,7 @@ sudo pacman -S flashrom      # Arch
 
 `flash_ops.find_flashrom()` probes `/usr/{bin,sbin}`, `/usr/local/{bin,sbin}`, Linuxbrew, then macOS Homebrew, falling back to `shutil.which`. Privileged invocation goes through `run_admin()` which prefers `pkexec` (polkit GUI prompt), then `sudo -A` if `SUDO_ASKPASS` is set, then non-interactive `sudo` as a last resort. A polkit agent (gnome-shell, plasma, lxpolkit, etc.) is required for the standard GUI flow.
 
-Distribution target is an **AppImage** (planned, issue #8). The repository still contains macOS bundle leftovers (`app_icon.icns`, `AppIcon.iconset/`, `qt.conf`, `qt_plugin_path_hook.py`, `HDZeroProgrammerTool_v2.zip`); see issue #9 for cleanup. `resource_path()` and `qt_plugin_path_hook.py` use `sys._MEIPASS`, which works for both PyInstaller and AppImage's python-appimage builds.
+Distribution target is an **AppImage** built via `packaging/build-appimage.sh` (closes #8): uses [`python-appimage`](https://github.com/niess/python-appimage) to graft a relocatable Python 3.12 + PyQt6 + `requests`, then post-injects the application source into `opt/python3.12/lib/python3.12/site-packages/_hdzero_app/`. The generated AppRun (`recipe/entrypoint.sh`) exports `HDZERO_APP_DIR` so `resource_path()` resolves bundled assets out of the inject dir. The repository still contains macOS bundle leftovers (`app_icon.icns`, `AppIcon.iconset/`, `qt.conf`, `qt_plugin_path_hook.py`, `HDZeroProgrammerTool_v2.zip`); see issue #9 for cleanup. `resource_path()` checks `HDZERO_APP_DIR` first, then falls back to `sys._MEIPASS` (PyInstaller) and finally the module's directory (pip / checkout).
 
 ## Architecture
 

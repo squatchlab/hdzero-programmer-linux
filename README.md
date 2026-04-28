@@ -98,6 +98,22 @@ script installed by `pip install`. If you run from a checkout without
 installing, edit the installed `.desktop` file's `Exec=` line to
 `python3 /absolute/path/to/main.py`.
 
+## Build a self-contained AppImage (optional)
+
+For distribution to users without a Python toolchain, build a single-file
+AppImage that bundles a relocatable Python 3.12, PyQt6, `requests`, and
+the application source:
+
+```bash
+pipx install python-appimage
+./packaging/build-appimage.sh
+# → dist/HDZeroProgrammer-x86_64.AppImage
+```
+
+The resulting AppImage still requires `flashrom` on the host (the AppImage
+shells out to it) and the same CH341A access setup described above (udev
+rule or polkit agent).
+
 ## Usage
 
 1. **Internet tab** — pick a device from the dropdown, pick a firmware
