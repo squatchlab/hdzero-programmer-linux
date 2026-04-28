@@ -1,0 +1,16 @@
+# HDZero Programmer — CH341A USB SPI programmer access for flashrom.
+#
+# Grants the local seat user (uaccess via systemd-logind) and the plugdev
+# group read/write access to the CH341A so flashrom can run without root.
+# When this rule is active, set HDZERO_NO_ESCALATE=1 in the app's environment
+# to skip pkexec entirely; otherwise the app keeps escalating per its
+# default behavior.
+#
+# Install: copy to /etc/udev/rules.d/ then reload + replug:
+#   sudo cp packaging/99-ch341a.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger
+#   (unplug and replug the CH341A)
+
+# CH341A in EEPROM/parallel mode (the mode flashrom drives via -p ch341a_spi)
+SUBSYSTEM=="usb", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="5512", MODE="0660", GROUP="plugdev", TAG+="uaccess"
