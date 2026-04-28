@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=HDZero Programmer
+GenericName=VTX Firmware Flasher
+Comment=Flash HDZero VTX firmware over a CH341A USB SPI programmer
+Exec=hdzero-programmer
+Icon=hdzero-programmer
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=HDZero;VTX;FPV;flashrom;CH341A;firmware;
+StartupNotify=true

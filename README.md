@@ -50,6 +50,20 @@ Override the firmware index API base if needed:
 HDZERO_API_BASE=https://your-mirror.example python3 main.py
 ```
 
+## Desktop integration (optional)
+
+Install a launcher entry into your application menu and a 256×256 icon
+into the hicolor icon theme:
+
+```bash
+./packaging/install-desktop.sh                # per-user (~/.local/share)
+sudo PREFIX=/usr ./packaging/install-desktop.sh   # system-wide
+```
+
+Until the `hdzero-programmer` console entrypoint ships (issue #7), edit
+the installed `.desktop` file's `Exec=` line to point at
+`python3 /absolute/path/to/main.py` so the menu launcher works.
+
 ## Usage
 
 1. **Internet tab** — pick a device from the dropdown, pick a firmware
