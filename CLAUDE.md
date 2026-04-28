@@ -8,13 +8,13 @@ PyQt6 desktop GUI (Linux) for flashing HDZero VTX firmware. Wraps the `flashrom`
 
 ## Run / Build
 
-Project metadata lives in `pyproject.toml` (PEP 621); pinned dependencies in `requirements.txt`. The `hdzero-programmer` GUI entrypoint is wired to `main:main`.
+Project metadata + pinned dependencies live in `pyproject.toml` (PEP 621). The `hdzero-programmer` GUI entrypoint is wired to `main:main`.
 
 ```bash
 pip install --user .          # installs the hdzero-programmer launcher
 hdzero-programmer
 # or run from a checkout without installing
-pip install -r requirements.txt && python3 main.py
+pip install --user PyQt6 requests && python3 main.py
 ```
 
 Runtime dep on the `flashrom` CLI:
@@ -60,5 +60,5 @@ When adding a new flash trigger, follow this pattern: emit a request signal from
 - `run_admin()` wraps the command in `sh -c` and passes it to `pkexec` / `sudo`. Arguments are still built as shell strings by `FlashWorker` and `BackupWorker`; if you ever take untrusted input into one of those strings, switch to argv-list construction first. Current inputs (temp file paths, timestamped backup names) are controlled and safe.
 - Without a polkit agent installed, `pkexec` falls through to `sudo` paths which will likely fail under a GUI session that has no TTY. The CH341A udev rule in `packaging/99-ch341a.rules` avoids the prompt entirely by granting non-root USB access; combine with `HDZERO_NO_ESCALATE=1` to short-circuit `run_admin()` and execute `flashrom` directly as the user.
 - `resource_path()` lives in `internet_panel.py` and is imported by `main.py`; reuse it for any new bundled asset so frozen builds keep working.
-- README is loaded at runtime by `HelpPanel` — it tries `Readme.md`, `README.md`, `Readme,md` in order. Don't rename the file without updating that list.
+- README is loaded at runtime by `HelpPanel` — it tries `README.md`, then `Readme.md`. Don't rename the file without updating that list.
 - Spanish comments are scattered through the code; preserve them when editing nearby lines.

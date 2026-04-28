@@ -4,9 +4,10 @@
 # System-wide install: re-run with `sudo PREFIX=/usr ./install-desktop.sh`.
 # Default per-user install drops files under $XDG_DATA_HOME (~/.local/share).
 #
-# This script does NOT install the hdzero-programmer launcher binary itself.
-# Until the pyproject.toml entrypoint lands (issue #7), edit the resulting
-# .desktop file's Exec= line to point at `python3 /absolute/path/to/main.py`.
+# This script does NOT install the launcher binary. The Exec= line points
+# at `hdzero-programmer`, provided by `pip install --user .`. If you run
+# from a checkout without installing, edit the installed .desktop file's
+# Exec= line to `python3 /absolute/path/to/main.py`.
 
 set -eu
 

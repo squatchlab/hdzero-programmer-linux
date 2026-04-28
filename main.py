@@ -96,7 +96,7 @@ class HelpPanel(QWidget):
 
         # Cargar README
         readme_text = "README not found."
-        for p in ("Readme.md", "README.md", "Readme,md"):
+        for p in ("README.md", "Readme.md"):
             rp = resource_path(p)
             if Path(rp).exists():
                 try:

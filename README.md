@@ -46,10 +46,10 @@ pip install --user .
 hdzero-programmer
 ```
 
-Or run directly without installing:
+Or run directly out of a checkout:
 
 ```bash
-pip install -r requirements.txt
+pip install --user PyQt6 requests
 python3 main.py
 ```
 
