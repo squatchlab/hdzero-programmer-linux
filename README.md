@@ -1,71 +1,89 @@
-HDzero Programmer Tool - For MAC
-Developed by - Gunther_FPV (Gunther Votteler)
-Github - https://github.com/gvotteler
-Version 2.0
+# HDZero Programmer (Linux)
 
-#############################################
-This tool provide a usefull way to update or flash your Hdzero VTX's.
+A PyQt6 desktop GUI for flashing HDZero VTX firmware on Linux. Wraps the
+`flashrom` CLI driving a CH341A USB SPI programmer against the W25Q80 chip
+on HDZero video transmitters.
 
-#############################################
-Pre-requieriments.
+## Status
 
-Before to use this tool YOU need follow the next steps.
+**Linux port in progress.** The code currently in this repository is a direct
+import of the upstream macOS tool and has not yet been adapted for Linux —
+notably `flash_ops.run_admin()` shells out to `osascript`, which does not
+exist on Linux. Expect this to be replaced with `pkexec` (or `sudo` fallback)
+in the next pass.
 
-1. Open your terminal app (CLI)
+## Credits
 
-2. Install brew in your MAC, if you not have installed
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+This project is a Linux port of the
+[HDZero Programmer Tool for Mac](https://github.com/gvotteler) by
+**Gunther Votteler** (Gunther_FPV).
 
-3. Install flashrom
-brew install flashrom
+- Original author: Gunther Votteler — [@gunther_fpv](https://www.instagram.com/gunther_fpv) ·
+  [YouTube: FPVecinos](https://www.youtube.com/@FPVecinos)
+- Original license: MIT (see `LICENSE`)
 
-4. Run this commands in the same folder that you have the HDZeroProgrammerTool.app
-xattr -dr com.apple.quarantine "HDZeroProgrammerTool.app"
-codesign --deep --force --sign - "HDZeroProgrammerTool.app"
+All credit for the original design, UI, and flashing pipeline belongs to
+Gunther. This fork only adapts it for Linux.
 
-5. If you want, move the app to Applications folder or desire folder.
+## Requirements (Linux)
 
-##########################################################################################
-##################################FOR LOCAL LOAD##########################################
+- Python 3.10+
+- PyQt6 (`pip install PyQt6`)
+- `requests` (`pip install requests`)
+- `flashrom` (`sudo apt install flashrom` / `sudo dnf install flashrom` /
+  `sudo pacman -S flashrom`)
+- A CH341A USB SPI programmer + a wired connection to the HDZero VTX's
+  W25Q80 flash chip
+- A polkit agent (for the `pkexec` GUI password prompt) — present by default
+  on most desktop distros
 
+## Run
 
-1. Download the Hdzero firmware that you want flash in your VTX (https://www.hd-zero.com/document) section VTX Firmware
+```bash
+pip install PyQt6 requests
+python3 main.py
+```
 
-2. Extract the zip file, locate the zip file of your vtx and extract too.
+Override the firmware index API base if needed:
 
-3. Open HDZeroProgrammerTool.app, browse the folder and choose the .bin file extracted.
+```bash
+HDZERO_API_BASE=https://your-mirror.example python3 main.py
+```
 
-4. Flash.
+## Usage
 
-5. Optional (If you want, create a backup of the current firmware before to flash)
+1. **Internet tab** — pick a device from the dropdown, pick a firmware
+   version, click **FLASH**. The app downloads the `.bin`, pads it to 1 MiB
+   (W25Q80 size), and writes it via `flashrom -p ch341a_spi -w`.
+2. **Local tab** — browse to a `.bin` you already have, optionally **BACKUP**
+   the current chip contents to `~/HDZero_backup_<timestamp>.bin` first,
+   then **FLASH**.
+3. **Help tab** — shows this README at runtime.
 
+Firmware files larger than 64 KB are rejected by the UI as invalid for
+HDZero hardware.
 
-##########################################################################################
-##########################################################################################
+## How it works
 
+Three Python modules, one Qt event loop, blocking I/O isolated to QThread
+workers:
 
-Licence - MIT
-Copyright (c) 2025 Gunther Votteler
-Instagram - @gunther_fpv
-Youtube - https://www.youtube.com/@FPVecinos
+- `main.py` — `MainWindow` owns the three tabs and routes signals.
+- `internet_panel.py` — fetches device + firmware lists from
+  `HDZERO_API_BASE`, downloads selected firmware to a temp file.
+- `flash_ops.py` — `flashrom` discovery, 1 MiB padding, and the
+  `FlashWorker` / `BackupWorker` QThreads that invoke `flashrom` with
+  privilege escalation.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+See `CLAUDE.md` for deeper architecture notes.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+## License
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+MIT — see [`LICENSE`](LICENSE). Copyright remains with the original
+author Gunther Votteler (2025); this Linux port preserves the upstream
+license per its terms.
 
-USE UNDER YOUR OWN RISK
+## Disclaimer
 
+Flashing firmware can brick hardware. Always **BACKUP** before **FLASH**.
+Use at your own risk.
