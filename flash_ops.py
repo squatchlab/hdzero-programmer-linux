@@ -24,10 +24,40 @@ def find_flashrom() -> Optional[str]:
     return which("flashrom")
 
 def run_admin(cmd: str) -> subprocess.CompletedProcess:
-    safe = cmd.replace('"', '\\"')
-    return subprocess.run(
-        ["/usr/bin/osascript", "-e", f'do shell script "{safe}" with administrator privileges'],
-        text=True, capture_output=True
+    """Run a shell command with elevated privileges on Linux.
+
+    Prefers pkexec (polkit GUI prompt — integrates with the desktop session),
+    then sudo -A if SUDO_ASKPASS is set, then non-interactive sudo as a last
+    resort. Returns a CompletedProcess so callers see a uniform contract.
+    """
+    if os.geteuid() == 0:
+        return subprocess.run(["/bin/sh", "-c", cmd], text=True, capture_output=True)
+
+    from shutil import which
+    pkexec = which("pkexec")
+    if pkexec:
+        return subprocess.run(
+            [pkexec, "/bin/sh", "-c", cmd], text=True, capture_output=True
+        )
+
+    sudo = which("sudo")
+    if sudo and os.environ.get("SUDO_ASKPASS"):
+        return subprocess.run(
+            [sudo, "-A", "/bin/sh", "-c", cmd], text=True, capture_output=True
+        )
+    if sudo:
+        # No GUI askpass — try non-interactive sudo. Fails fast with a clear
+        # message instead of hanging on a missing TTY.
+        return subprocess.run(
+            [sudo, "-n", "/bin/sh", "-c", cmd], text=True, capture_output=True
+        )
+
+    return subprocess.CompletedProcess(
+        args=cmd, returncode=127, stdout="",
+        stderr=(
+            "No privilege escalation tool found. Install polkit (pkexec) "
+            "or sudo, then retry. See README for udev-rule alternative.\n"
+        ),
     )
 
 def make_padded_image_1mib(fw_path: str) -> str:
