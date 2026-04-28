@@ -14,6 +14,13 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal
 API_BASE = os.environ.get("HDZERO_API_BASE", "https://hdzero.go-next.co").rstrip("/")
 
 def resource_path(relpath: str) -> str:
+    # AppImage build sets HDZERO_APP_DIR to the bundled source/asset dir.
+    # PyInstaller frozen builds expose sys._MEIPASS. Otherwise fall back to
+    # the directory of this file (works for pip-installed flat modules and
+    # plain checkouts).
+    env_dir = os.environ.get("HDZERO_APP_DIR")
+    if env_dir:
+        return str(Path(env_dir) / relpath)
     base = getattr(__import__('sys').modules['__main__'], "_MEIPASS", Path(__file__).parent)
     return str(Path(base) / relpath)
 
