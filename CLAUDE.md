@@ -56,7 +56,7 @@ When adding a new flash trigger, follow this pattern: emit a request signal from
 
 - Anything blocking (HTTP, `flashrom`, file I/O > a few KB) must run in a `QThread`, not on the main thread — every existing worker follows the `QThread` + `pyqtSignal` pattern.
 - `run_admin()` wraps the command in `sh -c` and passes it to `pkexec` / `sudo`. Arguments are still built as shell strings by `FlashWorker` and `BackupWorker`; if you ever take untrusted input into one of those strings, switch to argv-list construction first. Current inputs (temp file paths, timestamped backup names) are controlled and safe.
-- Without a polkit agent installed, `pkexec` falls through to `sudo` paths which will likely fail under a GUI session that has no TTY. CH341A udev rules (issue #6) avoid the prompt entirely by granting non-root USB access.
+- Without a polkit agent installed, `pkexec` falls through to `sudo` paths which will likely fail under a GUI session that has no TTY. The CH341A udev rule in `packaging/99-ch341a.rules` avoids the prompt entirely by granting non-root USB access; combine with `HDZERO_NO_ESCALATE=1` to short-circuit `run_admin()` and execute `flashrom` directly as the user.
 - `resource_path()` lives in `internet_panel.py` and is imported by `main.py`; reuse it for any new bundled asset so frozen builds keep working.
 - README is loaded at runtime by `HelpPanel` — it tries `Readme.md`, `README.md`, `Readme,md` in order. Don't rename the file without updating that list.
 - Spanish comments are scattered through the code; preserve them when editing nearby lines.

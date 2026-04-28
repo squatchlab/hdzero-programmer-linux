@@ -50,6 +50,30 @@ Override the firmware index API base if needed:
 HDZERO_API_BASE=https://your-mirror.example python3 main.py
 ```
 
+## Skip the password prompt (optional, recommended)
+
+By default each flash and backup triggers a polkit (`pkexec`) password
+prompt because `flashrom` needs raw USB access to the CH341A. You can
+grant that access to your user via a udev rule and skip the prompt
+entirely:
+
+```bash
+sudo cp packaging/99-ch341a.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+# unplug and replug the CH341A
+```
+
+Then launch the app with the bypass env var set:
+
+```bash
+HDZERO_NO_ESCALATE=1 python3 main.py
+```
+
+The rule grants access to the local-seat user (`uaccess`) and the
+`plugdev` group. Without the rule (or without the env var), the app
+falls back to the default `pkexec → sudo` escalation chain.
+
 ## Desktop integration (optional)
 
 Install a launcher entry into your application menu and a 256×256 icon

@@ -37,7 +37,10 @@ def run_admin(cmd: str) -> subprocess.CompletedProcess:
     then sudo -A if SUDO_ASKPASS is set, then non-interactive sudo as a last
     resort. Returns a CompletedProcess so callers see a uniform contract.
     """
-    if os.geteuid() == 0:
+    if os.geteuid() == 0 or os.environ.get("HDZERO_NO_ESCALATE"):
+        # Already root, or user opted out of escalation (typically because
+        # they installed the CH341A udev rule in packaging/99-ch341a.rules
+        # and flashrom can talk to /dev/bus/usb/ as the unprivileged user).
         return subprocess.run(["/bin/sh", "-c", cmd], text=True, capture_output=True)
 
     from shutil import which
