@@ -8,7 +8,7 @@ from typing import Callable, List, Optional, Tuple
 
 import requests
 from PyQt6 import QtCore
-from PyQt6.QtCore import QSettings, Qt, QThread, pyqtSignal
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QIcon, QPixmap, QTextCursor
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -23,17 +23,14 @@ from PyQt6.QtWidgets import (
 )
 from requests.exceptions import RequestException
 
+from app_settings import SETTINGS_KEY_AUTOBACKUP
+from app_settings import settings as _qsettings
+
 # Narrow exception class for HTTP-worker run(). Catches network/HTTP
 # failures + malformed JSON. Anything else (AttributeError, KeyError on a
 # changed schema, programmer error) propagates so it surfaces as a real
 # bug rather than a misleading "connectivity error" string.
 _HTTP_FAILURES = (RequestException, json.JSONDecodeError, OSError)
-
-# Keep these in sync with the constants in main.py — single shared key so
-# toggling on either tab persists app-wide.
-_SETTINGS_ORG = "HDZero"
-_SETTINGS_APP = "Programmer"
-_SETTINGS_KEY_AUTOBACKUP = "autobackup"
 
 API_BASE = os.environ.get("HDZERO_API_BASE", "https://hdzero.go-next.co").rstrip("/")
 
@@ -196,9 +193,8 @@ class InternetPanel(QWidget):
         self.btn_flash.clicked.connect(self.download_selected_fw)
 
         self.cb_autobackup = QCheckBox("Backup chip before flashing")
-        _s = QSettings(_SETTINGS_ORG, _SETTINGS_APP)
         self.cb_autobackup.setChecked(
-            _s.value(_SETTINGS_KEY_AUTOBACKUP, True, type=bool)
+            _qsettings().value(SETTINGS_KEY_AUTOBACKUP, True, type=bool)
         )
         self.cb_autobackup.toggled.connect(self._persist_autobackup)
 
@@ -235,9 +231,7 @@ class InternetPanel(QWidget):
         
     @staticmethod
     def _persist_autobackup(checked: bool) -> None:
-        QSettings(_SETTINGS_ORG, _SETTINGS_APP).setValue(
-            _SETTINGS_KEY_AUTOBACKUP, checked
-        )
+        _qsettings().setValue(SETTINGS_KEY_AUTOBACKUP, checked)
 
     def set_phase(self, text: str):
         self.lbl_phase.setText(text)

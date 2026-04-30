@@ -49,7 +49,7 @@ Upstream = "https://github.com/gvotteler/HDZero-Programmer-Tool-Mac"
 hdzero-programmer = "main:main"
 
 [tool.setuptools]
-py-modules = ["main", "internet_panel", "flash_ops", "udev_check", "app_logging"]
+py-modules = ["main", "internet_panel", "flash_ops", "udev_check", "app_logging", "app_settings"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -80,6 +80,7 @@ cp "$REPO_ROOT/internet_panel.py" "$INJECT_ABS/"
 cp "$REPO_ROOT/flash_ops.py"      "$INJECT_ABS/"
 cp "$REPO_ROOT/udev_check.py"     "$INJECT_ABS/"
 cp "$REPO_ROOT/app_logging.py"    "$INJECT_ABS/"
+cp "$REPO_ROOT/app_settings.py"   "$INJECT_ABS/"
 
 # Image assets used by HelpPanel, LocalPanel, InternetPanel, MainWindow
 cp "$REPO_ROOT"/*.png "$INJECT_ABS/"

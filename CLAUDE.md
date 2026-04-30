@@ -12,7 +12,7 @@ under MIT.
 
 ## Architecture
 
-Five top-level Python modules (all listed in `[tool.setuptools].py-modules`;
+Six top-level Python modules (all listed in `[tool.setuptools].py-modules`;
 the AppImage build copies them into `_hdzero_app/`), one Qt event loop,
 worker threads for blocking I/O. ADRs for non-trivial decisions live in
 [`docs/adr/`](docs/adr/); the 2026-04-29 acquisition audit and its
@@ -37,6 +37,9 @@ open-blocker backlog (`#19`–`#23`) are under [`docs/audits/`](docs/audits/).
 - `udev_check.py` — `99-ch341a.rules` install state, CH341A vendor/product
   walk of `/sys/bus/usb/devices`, reads `HDZERO_NO_ESCALATE`. Drives the
   install banner and the `--check-rule` CLI flag.
+- `app_settings.py` — `settings()` (reverse-DNS QSettings scope
+  `lab.squatch / hdzero-programmer-linux`) and `migrate_settings_once()`
+  (one-shot copy of the legacy `HDZero/Programmer` scope into the new one).
 - `app_logging.py` — `state_dir()` (`HDZERO_STATE_DIR` >
   `$XDG_STATE_HOME/hdzero-programmer` > `~/.local/state/hdzero-programmer`)
   and `backup_dir()` (`HDZERO_BACKUP_DIR` > `state_dir()/backups/`).
@@ -108,10 +111,15 @@ in `MainWindow`. Do not call `flash_ops` from panels directly.
   before constructing `QApplication`; `parse_known_args` lets Qt's
   platform flags pass through. CI `appimage` job execs both flags as a
   launch smoke test.
-- **Autobackup persistence.** `QSettings("HDZero", "Programmer")` key
-  `autobackup`, shared between Local and Internet panels — last toggle
-  on either becomes the next-launch default. File:
-  `~/.config/HDZero/Programmer.conf`.
+- **Autobackup persistence.** `app_settings.settings()` returns a
+  `QSettings` handle in the reverse-DNS scope `lab.squatch /
+  hdzero-programmer-linux` (file `~/.config/lab.squatch/hdzero-programmer-linux.conf`).
+  Key `autobackup` is shared between Local and Internet panels — last
+  toggle on either becomes the next-launch default.
+  `app_settings.migrate_settings_once()` runs in `main()` after
+  `_install_excepthook()` and copies the legacy `HDZero/Programmer` keys
+  forward exactly once (sentinel `_migrated_from_legacy_org`); the legacy
+  file is left intact so a downgrade still finds its data.
 - **Test harness.** `tests/fixtures/fake_flashrom.sh` is a drop-in
   stand-in: emits the same stdout markers `FlashWorker` greps and supports
   `FAKE_FLASHROM_FAIL=read|write|verify`. Integration tests call
