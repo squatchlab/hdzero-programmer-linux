@@ -33,6 +33,12 @@ jobs:
       - name: ruff
         run: ruff check .
 
+      - name: mypy
+        # Strict on safety-critical modules (flash_ops, udev_check,
+        # app_logging, app_settings); signature-typing on main +
+        # internet_panel. See pyproject [tool.mypy] for rationale.
+        run: mypy
+
       - name: gitleaks
         # Scan full history on push to main; staged diff is already covered
         # by the pre-commit hook. Use --no-git for forks/runners that don't
@@ -45,7 +51,7 @@ jobs:
           /tmp/gitleaks detect --source . --redact --verbose
 
       - name: py_compile
-        run: python -m py_compile flash_ops.py main.py internet_panel.py udev_check.py app_logging.py
+        run: python -m py_compile flash_ops.py main.py internet_panel.py udev_check.py app_logging.py app_settings.py
 
       - name: pytest
         # --cov measures coverage; no --cov-fail-under yet — first establish
