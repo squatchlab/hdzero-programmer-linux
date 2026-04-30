@@ -158,7 +158,7 @@ class HelpPanel(QWidget):
         md = QTextEdit(); md.setReadOnly(True); md.setMarkdown(readme_text); md.setMinimumHeight(260)
         layout.addWidget(md, 1)
 
-        # Logo Next al 50%
+        # Next logo at 50% scale
         next_path = resource_path("next.png")
         logo = QLabel(); logo.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         if Path(next_path).exists():

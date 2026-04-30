@@ -1,5 +1,6 @@
 # internet_panel.py
 import os
+import sys
 import tempfile
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
@@ -36,7 +37,7 @@ def resource_path(relpath: str) -> str:
     env_dir = os.environ.get("HDZERO_APP_DIR")
     if env_dir:
         return str(Path(env_dir) / relpath)
-    base = getattr(__import__('sys').modules['__main__'], "_MEIPASS", Path(__file__).parent)
+    base = getattr(sys.modules["__main__"], "_MEIPASS", Path(__file__).parent)
     return str(Path(base) / relpath)
 
 # HTTP workers local to the Internet panel
@@ -123,7 +124,7 @@ class InternetPanel(QWidget):
         root.setContentsMargins(10,10,10,10)
         root.setSpacing(10)
 
-        # ======= Fila principal (2 columnas): IZQ (device + img + estado) | DER (version + Notes + FLASH)
+        # ======= Main row (2 columns): LEFT (device + img + status) | RIGHT (version + notes + FLASH)
         row = QHBoxLayout()
         row.setSpacing(12)
 
@@ -191,11 +192,7 @@ class InternetPanel(QWidget):
         self.cb_autobackup.setChecked(
             _s.value(_SETTINGS_KEY_AUTOBACKUP, True, type=bool)
         )
-        self.cb_autobackup.toggled.connect(
-            lambda checked: QSettings(_SETTINGS_ORG, _SETTINGS_APP).setValue(
-                _SETTINGS_KEY_AUTOBACKUP, checked
-            )
-        )
+        self.cb_autobackup.toggled.connect(self._persist_autobackup)
 
         right_col.addWidget(lbl_fw)
         right_col.addWidget(self.cb_fw)
@@ -228,6 +225,12 @@ class InternetPanel(QWidget):
 
         self.load_devices()
         
+    @staticmethod
+    def _persist_autobackup(checked: bool) -> None:
+        QSettings(_SETTINGS_ORG, _SETTINGS_APP).setValue(
+            _SETTINGS_KEY_AUTOBACKUP, checked
+        )
+
     def set_phase(self, text: str):
         self.lbl_phase.setText(text)
 
