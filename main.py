@@ -25,7 +25,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from app_logging import open_flash_log
+from app_logging import backup_dir, open_flash_log
 from flash_ops import HDZERO_MAX, BackupWorker, FlashWorker, find_flashrom
 from internet_panel import InternetPanel, resource_path
 from udev_check import (
@@ -381,7 +381,13 @@ class MainWindow(QWidget):
         if not self._confirm_ch341a_present():
             return
         ts = time.strftime("%Y%m%d-%H%M%S")
-        out = os.path.expanduser(f"~/HDZero_backup_{ts}.bin")
+        bdir = backup_dir()
+        try:
+            bdir.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            QMessageBox.critical(self, "Error", f"Cannot create backup dir {bdir}: {e}")
+            return
+        out = str(bdir / f"HDZero_backup_{ts}.bin")
         self.panel_local.btn_backup.setEnabled(False)
         self.panel_local.flash_btn.setEnabled(False)
         self.panel_local.status.setText("Backing up…")
@@ -434,7 +440,13 @@ class MainWindow(QWidget):
         backup_path: Optional[str] = None
         if autobackup:
             ts = time.strftime("%Y%m%d-%H%M%S")
-            backup_path = os.path.expanduser(f"~/HDZero_pre-flash_{ts}.bin")
+            bdir = backup_dir()
+            try:
+                bdir.mkdir(parents=True, exist_ok=True)
+            except OSError as e:
+                QMessageBox.critical(self, "Error", f"Cannot create backup dir {bdir}: {e}")
+                return
+            backup_path = str(bdir / f"HDZero_pre-flash_{ts}.bin")
 
         self.worker = FlashWorker(
             self.flashrom, fw_path, backup_path=backup_path, cleanup_fw=cleanup_fw,
