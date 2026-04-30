@@ -484,6 +484,56 @@ def _build_argparser() -> argparse.ArgumentParser:
     return p
 
 
+def _install_excepthook() -> None:
+    """Surface unhandled exceptions to the user instead of dropping them.
+
+    PyQt6 routes uncaught exceptions raised inside slots back through
+    sys.excepthook (older PyQt5 used to swallow them). Without a hook
+    installed, the user sees an instant exit; with this one they get a
+    QMessageBox.critical with the traceback plus a pointer at the
+    transcript dir, then the app stays alive — useful for in-flight
+    flashes where dropping the process would leave the chip half-written.
+
+    Reentrancy-guarded: a buggy hook would otherwise loop forever if its
+    own QMessageBox raised. The fallback is to print to stderr and
+    re-raise via the original hook.
+    """
+    import traceback as _tb
+
+    original = sys.excepthook
+    in_hook = [False]
+
+    def hook(exc_type, exc, tb):
+        if in_hook[0]:
+            original(exc_type, exc, tb)
+            return
+        in_hook[0] = True
+        try:
+            text = "".join(_tb.format_exception(exc_type, exc, tb))
+            sys.stderr.write(text)
+            sys.stderr.flush()
+            try:
+                from app_logging import state_dir
+                hint = (
+                    f"Recent flash/backup transcripts are in:\n  {state_dir()}"
+                )
+            except Exception:
+                hint = ""
+            try:
+                QMessageBox.critical(
+                    None,
+                    "HDZero Programmer crashed",
+                    f"Unhandled exception:\n\n{text}\n{hint}",
+                )
+            except Exception:
+                # Qt itself wedged — fall back to original handler.
+                original(exc_type, exc, tb)
+        finally:
+            in_hook[0] = False
+
+    sys.excepthook = hook
+
+
 def _run_check_rule() -> int:
     installed = rule_installed()
     no_escalate = escalation_disabled()
@@ -501,6 +551,7 @@ def main(argv=None) -> int:
         return _run_check_rule()
 
     app = QApplication([sys.argv[0], *qt_argv])
+    _install_excepthook()
     app_icon_path = resource_path("icon256.png")
     if Path(app_icon_path).exists():
         app.setWindowIcon(QIcon(app_icon_path))
