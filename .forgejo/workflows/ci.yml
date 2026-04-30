@@ -78,7 +78,7 @@ jobs:
           PY
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: coverage-xml
           path: coverage.xml
@@ -144,7 +144,7 @@ jobs:
           ./dist/HDZeroProgrammer-x86_64.AppImage --check-rule
 
       - name: Upload AppImage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: HDZeroProgrammer-x86_64.AppImage
           path: dist/HDZeroProgrammer-x86_64.AppImage
