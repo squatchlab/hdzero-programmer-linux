@@ -66,7 +66,7 @@ def _build_admin_argv(cmd: str) -> Optional[List[str]]:
     return None
 
 
-def run_admin(cmd: str) -> subprocess.CompletedProcess:
+def run_admin(cmd: str) -> "subprocess.CompletedProcess[str]":
     """Buffered elevated execution. Returns a CompletedProcess so callers see a
     uniform contract regardless of which escalation path was taken.
     """
@@ -192,7 +192,7 @@ class FlashWorker(QThread):
         # firmware blob); LocalPanel's user-selected .bin must stay False.
         self.cleanup_fw = cleanup_fw
 
-    def run(self):
+    def run(self) -> None:
         padded: Optional[str] = None
         try:
             self.status.emit("Wait - Prepare firmware")
@@ -233,7 +233,7 @@ class FlashWorker(QThread):
             # per phase is sufficient.
             seen = {"backup": False, "write": False, "verify": False}
 
-            def on_line(line: str):
+            def on_line(line: str) -> None:
                 self.log.emit(line)
                 low = line.lower()
                 if not seen["backup"] and self.backup_path and "reading flash" in low:
@@ -292,7 +292,7 @@ class BackupWorker(QThread):
         self.flashrom = flashrom_path
         self.out = out_path
 
-    def run(self):
+    def run(self) -> None:
         try:
             cmd = (
                 f"{shlex.quote(self.flashrom)} -p ch341a_spi -r "
