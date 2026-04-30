@@ -143,6 +143,13 @@ intact. Uncheck the box to skip step 1 (write + verify only).
 Firmware files larger than 64 KB are rejected by the UI as invalid for
 HDZero hardware.
 
+Each flash and backup also writes a real-time transcript to
+`~/.local/state/hdzero-programmer/flash-<timestamp>.log` (or
+`backup-<timestamp>.log`). Useful when something goes wrong on the
+flashrom side — the file captures the full pipeline including phase
+transitions and the final OK/FAIL summary even if the GUI is closed.
+Override the directory with `HDZERO_STATE_DIR=/path/to/dir`.
+
 ## How it works
 
 Three Python modules, one Qt event loop, blocking I/O isolated to QThread
