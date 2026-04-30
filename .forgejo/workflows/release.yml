@@ -20,8 +20,9 @@ jobs:
         run: |
           set -eux
           sudo apt-get update
+          # libgl1 needed at AppImage runtime by PyQt6.QtGui — see ci.yml.
           sudo apt-get install -y --no-install-recommends \
-            file desktop-file-utils zsync wget jq squashfs-tools
+            file desktop-file-utils zsync wget jq squashfs-tools libgl1
           python -m pip install --upgrade pip
           pip install pipx
           # Match the pin used in ci.yml so release builds are reproducible.
