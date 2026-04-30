@@ -1,4 +1,5 @@
 # internet_panel.py
+import json
 import os
 import sys
 import tempfile
@@ -20,6 +21,13 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from requests.exceptions import RequestException
+
+# Narrow exception class for HTTP-worker run(). Catches network/HTTP
+# failures + malformed JSON. Anything else (AttributeError, KeyError on a
+# changed schema, programmer error) propagates so it surfaces as a real
+# bug rather than a misleading "connectivity error" string.
+_HTTP_FAILURES = (RequestException, json.JSONDecodeError, OSError)
 
 # Keep these in sync with the constants in main.py — single shared key so
 # toggling on either tab persists app-wide.
@@ -49,7 +57,7 @@ class LoadDevicesWorker(QThread):
             r = requests.get(url, timeout=15)
             r.raise_for_status()
             self.ok.emit(r.json().get("devices", []))
-        except Exception as e:
+        except _HTTP_FAILURES as e:
             self.fail.emit(str(e))
 
 class LoadFirmwaresWorker(QThread):
@@ -63,7 +71,7 @@ class LoadFirmwaresWorker(QThread):
             r = requests.get(url, timeout=15)
             r.raise_for_status()
             self.ok.emit(r.json().get("firmwares", []))
-        except Exception as e:
+        except _HTTP_FAILURES as e:
             self.fail.emit(str(e))
 
 class LoadImageWorker(QThread):
@@ -76,7 +84,7 @@ class LoadImageWorker(QThread):
             r = requests.get(self.url, timeout=10)
             r.raise_for_status()
             self.ok.emit(r.content)
-        except Exception as e:
+        except _HTTP_FAILURES as e:
             self.fail.emit(str(e))
 
 class DownloadFirmwareWorker(QThread):
@@ -103,7 +111,7 @@ class DownloadFirmwareWorker(QThread):
                         self.progress.emit(int(read * 100 / total))
             self.progress.emit(100)
             self.ok.emit(tmp_path)
-        except Exception as e:
+        except _HTTP_FAILURES as e:
             self.fail.emit(str(e))
 
 class InternetPanel(QWidget):

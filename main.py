@@ -153,7 +153,7 @@ class HelpPanel(QWidget):
             if Path(rp).exists():
                 try:
                     readme_text = Path(rp).read_text(encoding="utf-8"); break
-                except Exception: pass
+                except (OSError, UnicodeDecodeError): pass
 
         md = QTextEdit(); md.setReadOnly(True); md.setMarkdown(readme_text); md.setMinimumHeight(260)
         layout.addWidget(md, 1)
@@ -536,7 +536,10 @@ def _install_excepthook() -> None:
                 hint = (
                     f"Recent flash/backup transcripts are in:\n  {state_dir()}"
                 )
-            except Exception:
+            except Exception:  # noqa: BLE001 - last-resort catch-all in crash hook
+                # state_dir() should never raise in practice, but this is the
+                # crash hook — anything that goes wrong here must NOT prevent
+                # the dialog from appearing. Swallow and continue with empty hint.
                 hint = ""
             try:
                 QMessageBox.critical(
@@ -544,8 +547,10 @@ def _install_excepthook() -> None:
                     "HDZero Programmer crashed",
                     f"Unhandled exception:\n\n{text}\n{hint}",
                 )
-            except Exception:
-                # Qt itself wedged — fall back to original handler.
+            except Exception:  # noqa: BLE001 - last-resort catch-all in crash hook
+                # Qt itself wedged — fall back to the original handler so the
+                # user at least gets stderr output. Narrowing risks losing the
+                # last-line-of-defense behavior the hook is here to provide.
                 original(exc_type, exc, tb)
         finally:
             in_hook[0] = False
