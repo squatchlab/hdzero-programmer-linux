@@ -101,11 +101,13 @@ jobs:
           sudo apt-get update
           # appimagetool needs FUSE at runtime; CI containers usually lack
           # /dev/fuse, so we set APPIMAGE_EXTRACT_AND_RUN=1 below to bypass.
-          # libgl1 is needed at AppImage runtime by PyQt6.QtGui (the
-          # `--version` smoke step launches the AppImage which imports
-          # PyQt6 before argparse runs); same reason as in the smoke job.
+          # libgl1/libegl1/libxkbcommon0/libdbus-1-3/libfontconfig1/libxcb-cursor0
+          # are needed at AppImage runtime by PyQt6 (the `--version` smoke
+          # step launches the AppImage, which imports PyQt6.QtGui before
+          # argparse runs). Same set as the smoke job.
           sudo apt-get install -y --no-install-recommends \
-            file desktop-file-utils zsync wget squashfs-tools libgl1
+            file desktop-file-utils zsync wget squashfs-tools \
+            libgl1 libegl1 libxkbcommon0 libdbus-1-3 libfontconfig1 libxcb-cursor0
           python -m pip install --upgrade pip
           pip install pipx
           # Pin python-appimage so a future upstream change can't silently
