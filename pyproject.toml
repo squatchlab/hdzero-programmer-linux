@@ -91,16 +91,16 @@ ignore_missing_imports = true
 module = ["flash_ops", "udev_check", "app_logging", "app_settings"]
 strict = true
 
-# main + internet_panel are UI plumbing on top of PyQt6 (which carries
-# no first-party stubs). First pass: silence errors from these two
-# modules entirely. mypy still parses them so import-time errors
-# surface, but per-function annotation gaps don't fail CI. Tightening
-# is a deliberate follow-up — annotating every Qt callback is a sweep,
-# not a smoke check, and the value of this PR is the strict gate on
-# the four safety-critical modules.
+# main + internet_panel are UI plumbing on top of PyQt6 (which has no
+# first-party stubs). disallow_untyped_defs keeps the bar at "every
+# def has a typed signature" so cross-module signature drift surfaces.
+# Full strict isn't worth the Any-cast cost on Qt boilerplate, but
+# typed defs catch the bug class that matters: a slot connected with
+# the wrong arg shape, or a helper that loses an argument silently.
 [[tool.mypy.overrides]]
 module = ["main", "internet_panel"]
-ignore_errors = true
+disallow_untyped_defs = true
+check_untyped_defs = true
 
 [tool.ruff]
 target-version = "py310"
