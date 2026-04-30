@@ -9,7 +9,13 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QPixmap, QIcon, QTextCursor
 from PyQt6 import QtCore
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtCore import Qt, QThread, QSettings, pyqtSignal
+
+# Keep these in sync with the constants in main.py — single shared key so
+# toggling on either tab persists app-wide.
+_SETTINGS_ORG = "HDZero"
+_SETTINGS_APP = "Programmer"
+_SETTINGS_KEY_AUTOBACKUP = "autobackup"
 
 API_BASE = os.environ.get("HDZERO_API_BASE", "https://hdzero.go-next.co").rstrip("/")
 
@@ -168,7 +174,15 @@ class InternetPanel(QWidget):
         self.btn_flash.clicked.connect(self.download_selected_fw)
 
         self.cb_autobackup = QCheckBox("Backup chip before flashing")
-        self.cb_autobackup.setChecked(True)
+        _s = QSettings(_SETTINGS_ORG, _SETTINGS_APP)
+        self.cb_autobackup.setChecked(
+            _s.value(_SETTINGS_KEY_AUTOBACKUP, True, type=bool)
+        )
+        self.cb_autobackup.toggled.connect(
+            lambda checked: QSettings(_SETTINGS_ORG, _SETTINGS_APP).setValue(
+                _SETTINGS_KEY_AUTOBACKUP, checked
+            )
+        )
 
         right_col.addWidget(lbl_fw)
         right_col.addWidget(self.cb_fw)

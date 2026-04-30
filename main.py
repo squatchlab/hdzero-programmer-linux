@@ -10,7 +10,11 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QPixmap, QIcon, QTextCursor
 from PyQt6 import QtCore
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSettings
+
+SETTINGS_ORG = "HDZero"
+SETTINGS_APP = "Programmer"
+SETTINGS_KEY_AUTOBACKUP = "autobackup"
 
 from internet_panel import InternetPanel, resource_path
 from flash_ops import find_flashrom, FlashWorker, BackupWorker, HDZERO_MAX
@@ -49,7 +53,11 @@ class LocalPanel(QWidget):
         self.log = QTextEdit(); self.log.setReadOnly(True); layout.addWidget(self.log, 1)
 
         self.cb_autobackup = QCheckBox("Backup chip before flashing (rollback image in ~)")
-        self.cb_autobackup.setChecked(True)
+        settings = QSettings(SETTINGS_ORG, SETTINGS_APP)
+        self.cb_autobackup.setChecked(
+            settings.value(SETTINGS_KEY_AUTOBACKUP, True, type=bool)
+        )
+        self.cb_autobackup.toggled.connect(self._persist_autobackup)
         layout.addWidget(self.cb_autobackup)
 
         bottom = QHBoxLayout()
@@ -95,6 +103,12 @@ class LocalPanel(QWidget):
             QMessageBox.critical(self, "Error", "Firmware > 64KB; not valid for HDZero."); return
         self.set_fw_path(path); self.status.setText("Ready to flash.")
 
+    @staticmethod
+    def _persist_autobackup(checked: bool) -> None:
+        QSettings(SETTINGS_ORG, SETTINGS_APP).setValue(
+            SETTINGS_KEY_AUTOBACKUP, checked
+        )
+
     def on_backup_pressed(self): self.start_backup_cb()
     def on_flash_pressed(self):
         if not self.fw_path or not self.fw_path.exists():
@@ -115,7 +129,7 @@ class HelpPanel(QWidget):
                     readme_text = Path(rp).read_text(encoding="utf-8"); break
                 except Exception: pass
 
-        md = QTextEdit(); md.setReadOnly(True); md.setPlainText(readme_text); md.setMinimumHeight(260)
+        md = QTextEdit(); md.setReadOnly(True); md.setMarkdown(readme_text); md.setMinimumHeight(260)
         layout.addWidget(md, 1)
 
         # Logo Next al 50%
