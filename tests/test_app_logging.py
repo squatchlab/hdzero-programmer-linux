@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from app_logging import open_flash_log, state_dir
+from app_logging import backup_dir, open_flash_log, state_dir
 
 # ---------- state_dir resolution ----------
 
@@ -21,6 +21,27 @@ def test_state_dir_default_when_no_env(monkeypatch):
     monkeypatch.delenv("XDG_STATE_HOME", raising=False)
     expected = Path(os.path.expanduser("~/.local/state")) / "hdzero-programmer"
     assert state_dir() == expected
+
+
+# ---------- backup_dir resolution ----------
+
+def test_backup_dir_uses_hdzero_override(monkeypatch, tmp_path):
+    monkeypatch.setenv("HDZERO_BACKUP_DIR", str(tmp_path / "custom-backups"))
+    assert backup_dir() == tmp_path / "custom-backups"
+
+
+def test_backup_dir_default_under_state_dir(monkeypatch, tmp_path):
+    monkeypatch.delenv("HDZERO_BACKUP_DIR", raising=False)
+    monkeypatch.setenv("HDZERO_STATE_DIR", str(tmp_path / "state"))
+    assert backup_dir() == tmp_path / "state" / "backups"
+
+
+def test_backup_dir_default_when_no_env(monkeypatch):
+    monkeypatch.delenv("HDZERO_BACKUP_DIR", raising=False)
+    monkeypatch.delenv("HDZERO_STATE_DIR", raising=False)
+    monkeypatch.delenv("XDG_STATE_HOME", raising=False)
+    expected = Path(os.path.expanduser("~/.local/state")) / "hdzero-programmer" / "backups"
+    assert backup_dir() == expected
 
 
 # ---------- open_flash_log ----------

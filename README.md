@@ -124,16 +124,18 @@ rule or polkit agent).
    version, click **FLASH**. The app downloads the `.bin`, pads it to 1 MiB
    (W25Q80 size), and runs the safe-flash pipeline below.
 2. **Local tab** — browse to a `.bin` you already have, optionally **BACKUP**
-   the current chip contents to `~/HDZero_backup_<timestamp>.bin` on demand,
-   or just hit **FLASH** to run the safe-flash pipeline.
+   the current chip contents to
+   `~/.local/state/hdzero-programmer/backups/HDZero_backup_<timestamp>.bin`
+   on demand, or just hit **FLASH** to run the safe-flash pipeline.
 3. **Help tab** — shows this README at runtime.
 
 Each tab has a **Backup chip before flashing** checkbox (on by default).
 With it on, FLASH executes a single chained sequence under one privilege
 prompt:
 
-1. read the current chip to `~/HDZero_pre-flash_<timestamp>.bin` (rollback
-   image),
+1. read the current chip to
+   `~/.local/state/hdzero-programmer/backups/HDZero_pre-flash_<timestamp>.bin`
+   (rollback image),
 2. write the padded firmware,
 3. re-verify the chip against the padded image.
 
@@ -149,6 +151,15 @@ Each flash and backup also writes a real-time transcript to
 flashrom side — the file captures the full pipeline including phase
 transitions and the final OK/FAIL summary even if the GUI is closed.
 Override the directory with `HDZERO_STATE_DIR=/path/to/dir`.
+
+Chip backups (manual + pre-flash auto) land under
+`~/.local/state/hdzero-programmer/backups/`. Override with
+`HDZERO_BACKUP_DIR=/path/to/dir` if you prefer a different location.
+
+> **Migration note:** versions ≤0.2.0 dropped backup files at
+> `~/HDZero_*.bin` (in the home directory root). Existing files are
+> not auto-moved — `mv ~/HDZero_*.bin ~/.local/state/hdzero-programmer/backups/`
+> if you want them in the new location.
 
 ## How it works
 

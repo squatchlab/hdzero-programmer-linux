@@ -27,6 +27,24 @@ def state_dir() -> Path:
     return base / "hdzero-programmer"
 
 
+def backup_dir() -> Path:
+    """Where chip backups (manual + pre-flash auto) are written.
+
+    Order of precedence:
+      1. HDZERO_BACKUP_DIR env override (test-friendly + power-user escape).
+      2. state_dir() / "backups" (XDG-compliant default).
+
+    Pre-existing files at ~/HDZero_*.bin from older versions are NOT
+    migrated — moving user data is too surprise-destructive for a default
+    path change. The README documents the new location and how to find
+    legacy files.
+    """
+    override = os.environ.get("HDZERO_BACKUP_DIR")
+    if override:
+        return Path(override)
+    return state_dir() / "backups"
+
+
 def open_flash_log(prefix: str, version: str) -> Tuple[Path, IO[str]]:
     """Create a fresh log file under state_dir() and return (path, handle).
 
