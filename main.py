@@ -17,7 +17,14 @@ from flash_ops import find_flashrom, FlashWorker, BackupWorker, HDZERO_MAX
 from udev_check import bundled_rule_path, install_command, should_show_hint
 
 APP_TITLE = "HDZero Programmer Tool – by Gunther_FPV"
-APP_HEADER_TITLE = "HDzero Programmer for MAC"
+APP_HEADER_TITLE = "HDZero Programmer (Linux)"
+
+FLASHROM_INSTALL_HINT = (
+    "flashrom not found. Install via your distro's package manager:\n"
+    "  Debian/Ubuntu: sudo apt install flashrom\n"
+    "  Fedora/RHEL:   sudo dnf install flashrom\n"
+    "  Arch:          sudo pacman -S flashrom\n"
+)
 
 class LocalPanel(QWidget):
     def __init__(self, start_backup_cb, start_flash_cb):
@@ -64,7 +71,7 @@ class LocalPanel(QWidget):
         layout.addLayout(bottom)
 
         if not self.flashrom:
-            self.append_log("flashrom not found. Install with Homebrew: brew install flashrom\n")
+            self.append_log(FLASHROM_INSTALL_HINT)
 
     def set_fw_path(self, path: str):
         self.fw_path = Path(path); self.path_edit.setText(path)
@@ -193,7 +200,7 @@ class MainWindow(QWidget):
         layout.addWidget(self.tabs, 1)
 
         if not self.flashrom:
-            self.panel_local.append_log("flashrom not found. Install with Homebrew: brew install flashrom\n")
+            self.panel_local.append_log(FLASHROM_INSTALL_HINT)
 
         self._maybe_install_udev_banner(layout)
 
@@ -261,7 +268,7 @@ class MainWindow(QWidget):
 
     def start_backup(self):
         if not self.flashrom or not os.path.exists(self.flashrom):
-            QMessageBox.critical(self, "Error", "flashrom not found. Install: brew install flashrom")
+            QMessageBox.critical(self, "Error", FLASHROM_INSTALL_HINT)
             return
         ts = time.strftime("%Y%m%d-%H%M%S")
         out = os.path.expanduser(f"~/HDZero_backup_{ts}.bin")
@@ -299,7 +306,7 @@ class MainWindow(QWidget):
             QMessageBox.critical(self, "Error", "Select a .bin file.")
             return
         if not self.flashrom or not os.path.exists(self.flashrom):
-            QMessageBox.critical(self, "Error", "flashrom not found. Install: brew install flashrom")
+            QMessageBox.critical(self, "Error", FLASHROM_INSTALL_HINT)
             return
 
         self.panel_local.flash_btn.setEnabled(False)

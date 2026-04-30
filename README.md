@@ -6,11 +6,11 @@ on HDZero video transmitters.
 
 ## Status
 
-**Linux port in progress.** The code currently in this repository is a direct
-import of the upstream macOS tool and has not yet been adapted for Linux —
-notably `flash_ops.run_admin()` shells out to `osascript`, which does not
-exist on Linux. Expect this to be replaced with `pkexec` (or `sudo` fallback)
-in the next pass.
+Linux port is functional. `flash_ops.run_admin()` uses `pkexec` with
+`sudo -A` / `sudo -n` fallbacks, the build system produces a self-contained
+AppImage, and CI runs a headless smoke test plus the AppImage build on each
+push. The default flash pipeline now reads the chip first (rollback image),
+writes, then re-verifies — all in a single privilege prompt.
 
 ## Credits
 
@@ -62,18 +62,22 @@ HDZERO_API_BASE=https://your-mirror.example hdzero-programmer
 ## Skip the password prompt (optional, recommended)
 
 By default each flash and backup triggers a polkit (`pkexec`) password
-prompt because `flashrom` needs raw USB access to the CH341A. You can
-grant that access to your user via a udev rule and skip the prompt
-entirely:
+prompt because `flashrom` needs raw USB access to the CH341A. The app
+detects when this rule is missing and shows a banner with the exact
+install command on launch.
+
+Run the bundled helper or the manual sequence:
 
 ```bash
-sudo cp packaging/99-ch341a.rules /etc/udev/rules.d/
+./packaging/install-udev.sh
+# or, equivalently:
+sudo install -m 0644 packaging/99-ch341a.rules /etc/udev/rules.d/99-ch341a.rules
 sudo udevadm control --reload-rules
 sudo udevadm trigger
 # unplug and replug the CH341A
 ```
 
-Then launch the app with the bypass env var set:
+Then launch with the bypass env var set so the app skips `pkexec` entirely:
 
 ```bash
 HDZERO_NO_ESCALATE=1 python3 main.py
@@ -118,11 +122,23 @@ rule or polkit agent).
 
 1. **Internet tab** — pick a device from the dropdown, pick a firmware
    version, click **FLASH**. The app downloads the `.bin`, pads it to 1 MiB
-   (W25Q80 size), and writes it via `flashrom -p ch341a_spi -w`.
+   (W25Q80 size), and runs the safe-flash pipeline below.
 2. **Local tab** — browse to a `.bin` you already have, optionally **BACKUP**
-   the current chip contents to `~/HDZero_backup_<timestamp>.bin` first,
-   then **FLASH**.
+   the current chip contents to `~/HDZero_backup_<timestamp>.bin` on demand,
+   or just hit **FLASH** to run the safe-flash pipeline.
 3. **Help tab** — shows this README at runtime.
+
+Each tab has a **Backup chip before flashing** checkbox (on by default).
+With it on, FLASH executes a single chained sequence under one privilege
+prompt:
+
+1. read the current chip to `~/HDZero_pre-flash_<timestamp>.bin` (rollback
+   image),
+2. write the padded firmware,
+3. re-verify the chip against the padded image.
+
+If any step fails the chain short-circuits, leaving the rollback image
+intact. Uncheck the box to skip step 1 (write + verify only).
 
 Firmware files larger than 64 KB are rejected by the UI as invalid for
 HDZero hardware.
@@ -140,6 +156,17 @@ workers:
   privilege escalation.
 
 See `CLAUDE.md` for deeper architecture notes.
+
+## CI
+
+`.forgejo/workflows/ci.yml` runs on every push and pull request:
+
+- **smoke** — `py_compile`, `pytest` against `tests/`, and a headless
+  `MainWindow` boot under `QT_QPA_PLATFORM=offscreen`.
+- **appimage** — builds the AppImage and uploads it as a workflow
+  artifact (downloadable from the run page).
+
+Requires a registered Forgejo Actions runner labeled `ubuntu-22.04`.
 
 ## License
 
