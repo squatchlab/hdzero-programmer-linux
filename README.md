@@ -236,6 +236,11 @@ GPL-v3 terms even though the source itself is MIT. See
 [`LICENSE-NOTES.md`](LICENSE-NOTES.md) for the full source-vs-binary breakdown
 and redistribution notes.
 
+## Reporting a Vulnerability
+
+Found something security-relevant? Please report it privately per
+[`SECURITY.md`](SECURITY.md) rather than filing a public issue.
+
 ## Disclaimer
 
 Flashing firmware can brick hardware. Always **BACKUP** before **FLASH**.
