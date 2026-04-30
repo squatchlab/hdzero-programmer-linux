@@ -34,6 +34,11 @@ dependencies = [
     "requests>=2.31,<3",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+]
+
 [project.urls]
 Homepage = "https://forgejo.squatch.lab/bmags/hdzero-programmer-linux"
 Upstream = "https://github.com/gvotteler"
@@ -43,3 +48,7 @@ hdzero-programmer = "main:main"
 
 [tool.setuptools]
 py-modules = ["main", "internet_panel", "flash_ops"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
