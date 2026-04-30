@@ -98,7 +98,7 @@ jobs:
           done
 
       - name: Upload AppImage as workflow artifact too
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: HDZeroProgrammer-x86_64.AppImage
           path: dist/HDZeroProgrammer-x86_64.AppImage
