@@ -89,7 +89,7 @@ class HttpWorker(QThread):
         self.retries = retries
         self.backoff = backoff
 
-    def run(self):
+    def run(self) -> None:
         last_err: Optional[str] = None
         for attempt in range(1, self.retries + 2):
             try:
@@ -111,7 +111,7 @@ class HttpWorker(QThread):
                     time.sleep(wait)
         self.fail.emit(last_err or "unknown error")
 
-    def _stream_download(self):
+    def _stream_download(self) -> None:
         r = requests.get(self.url, stream=True, timeout=self.timeout)
         r.raise_for_status()
         total = int(r.headers.get("Content-Length") or 0)
@@ -135,7 +135,7 @@ class InternetPanel(QWidget):
     log = pyqtSignal(str)                     # log lines forwarded to Local panel
     flashRequested = pyqtSignal(str, bool)    # (local path, autobackup)
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.devices: List[dict] = []
         self.firmwares: List[dict] = []
@@ -252,20 +252,20 @@ class InternetPanel(QWidget):
     def _persist_autobackup(checked: bool) -> None:
         _qsettings().setValue(SETTINGS_KEY_AUTOBACKUP, checked)
 
-    def set_phase(self, text: str):
+    def set_phase(self, text: str) -> None:
         self.lbl_phase.setText(text)
 
     # ===== Status helpers =====
-    def status_append(self, text: str):
+    def status_append(self, text: str) -> None:
         self.status_box.moveCursor(QTextCursor.MoveOperation.End)
         self.status_box.insertPlainText(text if text.endswith("\n") else text + "\n")
         self.status_box.moveCursor(QTextCursor.MoveOperation.End)
 
-    def status_set(self, text: str):
+    def status_set(self, text: str) -> None:
         self.status_box.setPlainText(text)
         self.status_box.moveCursor(QTextCursor.MoveOperation.End)
 
-    def set_loading(self, msg: str):
+    def set_loading(self, msg: str) -> None:
         self.lbl_state.setText(msg)
 
     def _arm_loader(self, label: str, fn: Callable[[], None]) -> None:
@@ -286,7 +286,7 @@ class InternetPanel(QWidget):
         self.btn_retry.setVisible(False)
         fn()
 
-    def on_fail(self, msg: str):
+    def on_fail(self, msg: str) -> None:
         self.set_loading(f"Error: {msg}")
         self.status_append(f"ERROR: {msg}")
         self.log.emit(f"[Internet] ERROR: {msg}\n")
@@ -296,7 +296,7 @@ class InternetPanel(QWidget):
             self.btn_retry.setVisible(True)
 
     # ===== HTTP logic =====
-    def load_devices(self):
+    def load_devices(self) -> None:
         self._arm_loader("device list", self.load_devices)
         self.set_loading("Loading devices…")
         self.cb_devices.clear()
@@ -310,7 +310,7 @@ class InternetPanel(QWidget):
         w.start()
         self._w_dev = w
 
-    def on_devices_ok(self, devices: list):
+    def on_devices_ok(self, devices: list[dict[str, Any]]) -> None:
         self._clear_loader()
         self.devices = devices or []
         self.cb_devices.clear()
@@ -322,7 +322,7 @@ class InternetPanel(QWidget):
             self.cb_devices.setCurrentIndex(0)
             self.on_device_changed()
 
-    def _set_device_image(self, url: Optional[str]):
+    def _set_device_image(self, url: Optional[str]) -> None:
         if not url:
             self.device_img.setText("No image")
             self.device_img.setPixmap(QPixmap())
@@ -339,7 +339,7 @@ class InternetPanel(QWidget):
         w.start()
         self._w_img = w
 
-    def _on_image_loaded(self, data: bytes):
+    def _on_image_loaded(self, data: bytes) -> None:
         pix = QPixmap()
         if not pix.loadFromData(data):
             self.device_img.setText("Image load error")
@@ -349,11 +349,11 @@ class InternetPanel(QWidget):
         self.device_img.setPixmap(scaled)
         self.device_img.setText("")
 
-    def _on_image_failed(self, _msg: str):
+    def _on_image_failed(self, _msg: str) -> None:
         self.device_img.setText("Image load error")
         self.device_img.setPixmap(QPixmap())
 
-    def on_device_changed(self):
+    def on_device_changed(self) -> None:
         data = self.cb_devices.currentData()
         if not data:
             self.cb_fw.clear()
@@ -375,7 +375,7 @@ class InternetPanel(QWidget):
         w.start()
         self._w_fw = w
 
-    def on_fw_ok(self, firmwares: list):
+    def on_fw_ok(self, firmwares: list[dict[str, Any]]) -> None:
         self._clear_loader()
         self.firmwares = firmwares or []
         self.cb_fw.clear()
@@ -387,12 +387,12 @@ class InternetPanel(QWidget):
             self.cb_fw.setCurrentIndex(0)
             self.on_fw_changed()
 
-    def on_fw_changed(self):
+    def on_fw_changed(self) -> None:
         fw = self.cb_fw.currentData()
         self.notes.setPlainText("" if not fw else (fw.get("notes") or ""))
 
     # ===== Download and request flash =====
-    def download_selected_fw(self):
+    def download_selected_fw(self) -> None:
         fw = self.cb_fw.currentData()
         if not fw:
             self.on_fail("No firmware selected.")
@@ -415,7 +415,7 @@ class InternetPanel(QWidget):
         w.start()
         self._w_dl = w
 
-    def on_download_ok_then_flash(self, local_path: str):
+    def on_download_ok_then_flash(self, local_path: str) -> None:
         self._clear_loader()
         self.firmwareSelected.emit(local_path)
         self.status_append(f"Downloaded: {local_path}")

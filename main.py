@@ -4,7 +4,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from PyQt6 import QtCore
 from PyQt6.QtCore import Qt
@@ -55,7 +55,11 @@ FLASHROM_INSTALL_HINT = (
 )
 
 class LocalPanel(QWidget):
-    def __init__(self, start_backup_cb, start_flash_cb):
+    def __init__(
+        self,
+        start_backup_cb: "Callable[[], None]",
+        start_flash_cb: "Callable[[str, bool], None]",
+    ) -> None:
         super().__init__()
         self.start_backup_cb = start_backup_cb
         self.start_flash_cb = start_flash_cb
@@ -104,11 +108,11 @@ class LocalPanel(QWidget):
         if not self.flashrom:
             self.append_log(FLASHROM_INSTALL_HINT)
 
-    def set_fw_path(self, path: str):
+    def set_fw_path(self, path: str) -> None:
         self.fw_path = Path(path); self.path_edit.setText(path)
         self.status.setText("Ready to flash (from Internet).")
 
-    def append_log(self, text: str):
+    def append_log(self, text: str) -> None:
         cursor = self.log.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
         self.log.setTextCursor(cursor)
@@ -116,7 +120,7 @@ class LocalPanel(QWidget):
         self.log.setTextCursor(cursor)
         self.log.ensureCursorVisible()
 
-    def pick_bin(self):
+    def pick_bin(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, "Select firmware .bin", "", "BIN (*.bin)")
         if not path: return
         if not path.lower().endswith(".bin"):
@@ -130,14 +134,14 @@ class LocalPanel(QWidget):
     def _persist_autobackup(checked: bool) -> None:
         _settings().setValue(SETTINGS_KEY_AUTOBACKUP, checked)
 
-    def on_backup_pressed(self): self.start_backup_cb()
-    def on_flash_pressed(self):
+    def on_backup_pressed(self) -> None: self.start_backup_cb()
+    def on_flash_pressed(self) -> None:
         if not self.fw_path or not self.fw_path.exists():
             QMessageBox.critical(self, "Error", "Select or download a .bin file first."); return
         self.start_flash_cb(str(self.fw_path), self.cb_autobackup.isChecked())
 
 class HelpPanel(QWidget):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         layout = QVBoxLayout(self); layout.setContentsMargins(10,10,10,10); layout.setSpacing(10)
 
@@ -165,7 +169,7 @@ class HelpPanel(QWidget):
         layout.addWidget(logo, 0, Qt.AlignmentFlag.AlignHCenter)
 
 class MainWindow(QWidget):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle(APP_TITLE)
         self.resize(700, 620)
@@ -364,12 +368,12 @@ class MainWindow(QWidget):
         return reply == QMessageBox.StandardButton.Yes
 
     # ==== High-level handlers (reused by both tabs) ====
-    def on_fw_downloaded_set_local(self, path: str):
+    def on_fw_downloaded_set_local(self, path: str) -> None:
         self.fw_path = Path(path)
         self.panel_local.set_fw_path(path)
         self.panel_local.append_log(f"Downloaded from Internet → {path}\n")
 
-    def start_backup(self):
+    def start_backup(self) -> None:
         if not self.flashrom or not os.path.exists(self.flashrom):
             QMessageBox.critical(self, "Error", FLASHROM_INSTALL_HINT)
             return
@@ -396,7 +400,7 @@ class MainWindow(QWidget):
         self.bkw.fail.connect(self.on_backup_fail)
         self.bkw.start()
 
-    def on_backup_ok(self, out_path: str):
+    def on_backup_ok(self, out_path: str) -> None:
         self._close_flash_log(f"OK: backup saved {out_path}")
         self.panel_local.status.setText("✅ Backup done")
         self.panel_local.pb.setRange(0, 100)
@@ -406,7 +410,7 @@ class MainWindow(QWidget):
         self.panel_local.btn_backup.setEnabled(True)
         self.panel_local.flash_btn.setEnabled(True)
 
-    def on_backup_fail(self, msg: str):
+    def on_backup_fail(self, msg: str) -> None:
         self._close_flash_log(f"FAIL: {msg}")
         self.panel_local.status.setText("❌ Backup error")
         self.panel_local.pb.setRange(0, 100)
@@ -416,7 +420,7 @@ class MainWindow(QWidget):
         self.panel_local.btn_backup.setEnabled(True)
         self.panel_local.flash_btn.setEnabled(True)
 
-    def start_flash(self, fw_path: str, autobackup: bool = True, *, cleanup_fw: bool = False):
+    def start_flash(self, fw_path: str, autobackup: bool = True, *, cleanup_fw: bool = False) -> None:
         if not fw_path or not Path(fw_path).exists():
             QMessageBox.critical(self, "Error", "Select a .bin file.")
             return
@@ -463,7 +467,7 @@ class MainWindow(QWidget):
 
         self.worker.start()
 
-    def on_flash_ok(self):
+    def on_flash_ok(self) -> None:
         self._close_flash_log("OK: flash completed and verified")
         self.panel_local.status.setText("✅ Done")
         self.panel_local.pb.setValue(100)
@@ -472,7 +476,7 @@ class MainWindow(QWidget):
         self.panel_local.flash_btn.setEnabled(True)
         self.panel_local.btn_backup.setEnabled(True)
 
-    def on_flash_fail(self, msg: str):
+    def on_flash_fail(self, msg: str) -> None:
         self._close_flash_log(f"FAIL: {msg}")
         self.panel_local.status.setText("❌ Error")
         self.panel_local.pb.setValue(100)
@@ -513,11 +517,16 @@ def _install_excepthook() -> None:
     re-raise via the original hook.
     """
     import traceback as _tb
+    from types import TracebackType
 
     original = sys.excepthook
     in_hook = [False]
 
-    def hook(exc_type, exc, tb):
+    def hook(
+        exc_type: type[BaseException],
+        exc: BaseException,
+        tb: Optional[TracebackType],
+    ) -> None:
         if in_hook[0]:
             original(exc_type, exc, tb)
             return
@@ -561,7 +570,7 @@ def _run_check_rule() -> int:
     return 0 if (installed or no_escalate) else 1
 
 
-def main(argv=None) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     parser = _build_argparser()
     # argparse splits its own flags off; everything else is forwarded to
     # QApplication so platform plugin args (-style, -platform, …) still work.
