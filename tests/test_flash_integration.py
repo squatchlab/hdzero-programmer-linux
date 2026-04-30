@@ -147,3 +147,44 @@ def test_flashworker_records_backup_path(qt_app, fake_flashrom, small_firmware):
 
     worker = FlashWorker(fake_flashrom, small_firmware, backup_path="/tmp/whatever.bin")
     assert worker.backup_path == "/tmp/whatever.bin"
+
+
+# ---------- shell-quoting hardening ----------
+
+def test_safe_flash_handles_path_with_spaces(qt_app, fake_flashrom, small_firmware, tmp_path):
+    """Backup path containing a space and a single quote must round-trip
+    through the shlex.quote'd `sh -c '... && ...'` chain unscathed.
+    """
+    from flash_ops import FlashWorker
+
+    weird_dir = tmp_path / "dir with space and 'quote"
+    weird_dir.mkdir()
+    backup_path = weird_dir / "backup.bin"
+
+    worker = FlashWorker(fake_flashrom, small_firmware, backup_path=str(backup_path))
+    result = _run_worker(qt_app, worker)
+
+    assert result["fails"] == [], result["fails"]
+    assert result["ok"] == [True]
+    assert backup_path.exists()
+    assert backup_path.stat().st_size == 1024 * 1024
+
+
+def test_backup_worker_handles_path_with_spaces(qt_app, fake_flashrom, tmp_path):
+    from flash_ops import BackupWorker
+
+    weird_dir = tmp_path / "weird dir"
+    weird_dir.mkdir()
+    out = weird_dir / "out.bin"
+
+    worker = BackupWorker(fake_flashrom, str(out))
+    oks = []
+    fails = []
+    worker.ok.connect(oks.append)
+    worker.fail.connect(fails.append)
+    worker.run()
+
+    assert fails == []
+    assert oks == [str(out)]
+    assert out.exists()
+    assert out.stat().st_size == 1024 * 1024

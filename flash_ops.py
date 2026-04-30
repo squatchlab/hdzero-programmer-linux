@@ -1,5 +1,6 @@
 # flash_ops.py
 import os
+import shlex
 import subprocess
 import tempfile
 from typing import Callable, List, Optional
@@ -135,15 +136,25 @@ class FlashWorker(QThread):
             self.log.emit(f"→ padded image: {padded}\n")
             self.progress.emit(15)
 
+            # Each phase is built as an argv list and shell-escaped through
+            # shlex.quote so a path with whitespace or shell-meta chars (e.g.
+            # an XDG dir set to "$HOME/odd dir") can't break out of the chain.
+            # We still use sh -c because pkexec/sudo run a single program and
+            # the `&&` chain is what gives us one privilege prompt covering
+            # backup -> write -> verify.
+            flashrom_q = shlex.quote(self.flashrom)
+            padded_q = shlex.quote(padded)
             parts: List[str] = []
             if self.backup_path:
-                parts.append(f'{self.flashrom} -p ch341a_spi -r "{self.backup_path}"')
-            parts.append(f'{self.flashrom} -p ch341a_spi -w "{padded}"')
+                parts.append(
+                    f"{flashrom_q} -p ch341a_spi -r {shlex.quote(self.backup_path)}"
+                )
+            parts.append(f"{flashrom_q} -p ch341a_spi -w {padded_q}")
             # Explicit re-verify pass: re-reads the chip and diffs against the
             # padded image. flashrom's -w already verifies internally; this
             # second pass catches drift between write completion and end-of-op
             # and gives the user an audit line in the log.
-            parts.append(f'{self.flashrom} -p ch341a_spi -v "{padded}"')
+            parts.append(f"{flashrom_q} -p ch341a_spi -v {padded_q}")
             cmd = " && ".join(parts)
 
             phases = "backup → write → verify" if self.backup_path else "write → verify"
@@ -196,7 +207,10 @@ class BackupWorker(QThread):
 
     def run(self):
         try:
-            cmd = f'{self.flashrom} -p ch341a_spi -r "{self.out}"'
+            cmd = (
+                f"{shlex.quote(self.flashrom)} -p ch341a_spi -r "
+                f"{shlex.quote(self.out)}"
+            )
             self.log.emit(f"→ {cmd}\n")
             r = run_admin(cmd)
             self.log.emit(r.stdout)
