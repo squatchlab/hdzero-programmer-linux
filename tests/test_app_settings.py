@@ -12,9 +12,34 @@ import pytest
 
 @pytest.fixture
 def isolated_config(monkeypatch, tmp_path):
+    """Pin QSettings to write under tmp_path for the lifetime of the test.
+
+    `XDG_CONFIG_HOME` alone is not enough: PyQt6's `QStandardPaths` caches
+    the resolved config dir per QCoreApplication, so an env var set by
+    monkeypatch.setenv doesn't always reach a QSettings instance
+    constructed later. `QSettings.setPath` overrides the cache directly
+    for IniFormat / UserScope; we restore Qt's defaults at teardown so
+    one test can't bleed into the next.
+    """
+    from PyQt6.QtCore import QSettings
+
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
     monkeypatch.setenv("HOME", str(tmp_path))
-    return tmp_path
+    QSettings.setPath(
+        QSettings.Format.IniFormat,
+        QSettings.Scope.UserScope,
+        str(tmp_path),
+    )
+    QSettings.setDefaultFormat(QSettings.Format.IniFormat)
+    yield tmp_path
+    # Reset so a subsequent test that doesn't take this fixture (or runs
+    # later) sees fresh path resolution. setPath with an empty string
+    # restores the platform default.
+    QSettings.setPath(
+        QSettings.Format.IniFormat,
+        QSettings.Scope.UserScope,
+        "",
+    )
 
 
 def test_settings_uses_reverse_dns_scope(isolated_config):
