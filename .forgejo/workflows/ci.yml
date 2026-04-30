@@ -107,7 +107,7 @@ jobs:
           pip install pipx
           # Pin python-appimage so a future upstream change can't silently
           # break the build. Bump deliberately when validated.
-          pipx install 'python-appimage==0.34'
+          pipx install 'python-appimage>=1.4,<2'
 
       - name: Build AppImage
         env:

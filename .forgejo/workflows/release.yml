@@ -25,7 +25,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pipx
           # Match the pin used in ci.yml so release builds are reproducible.
-          pipx install 'python-appimage==0.34'
+          pipx install 'python-appimage>=1.4,<2'
 
       - name: Build AppImage
         env:
