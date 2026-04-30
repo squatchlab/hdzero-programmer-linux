@@ -4,7 +4,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Callable, Optional
+from typing import IO, Callable, Optional
 
 from PyQt6 import QtCore
 from PyQt6.QtCore import Qt
@@ -177,6 +177,11 @@ class MainWindow(QWidget):
 
         self.flashrom = find_flashrom() or ""
         self.fw_path: Optional[Path] = None
+        # Per-flash transcript handle. Set by _open_flash_log on flash
+        # start, cleared by _close_flash_log on completion. Optional
+        # because the open path degrades silently on OSError.
+        self._flash_log_path: Optional[Path] = None
+        self._flash_log_fh: Optional[IO[str]] = None
 
         # Dark style + gray tabs
         self.setStyleSheet("""

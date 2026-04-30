@@ -137,8 +137,8 @@ class InternetPanel(QWidget):
 
     def __init__(self) -> None:
         super().__init__()
-        self.devices: List[dict] = []
-        self.firmwares: List[dict] = []
+        self.devices: List[dict[str, Any]] = []
+        self.firmwares: List[dict[str, Any]] = []
         # (label shown on the button, callable that re-runs the failed op).
         # Set by every loader before kicking; cleared on success; consulted
         # by the Retry button which sits next to lbl_state.
