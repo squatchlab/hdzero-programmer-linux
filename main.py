@@ -14,6 +14,7 @@ from PyQt6.QtCore import Qt
 
 from internet_panel import InternetPanel, resource_path
 from flash_ops import find_flashrom, FlashWorker, BackupWorker, HDZERO_MAX
+from udev_check import bundled_rule_path, install_command, should_show_hint
 
 APP_TITLE = "HDZero Programmer Tool – by Gunther_FPV"
 APP_HEADER_TITLE = "HDzero Programmer for MAC"
@@ -193,6 +194,64 @@ class MainWindow(QWidget):
 
         if not self.flashrom:
             self.panel_local.append_log("flashrom not found. Install with Homebrew: brew install flashrom\n")
+
+        self._maybe_install_udev_banner(layout)
+
+    def _maybe_install_udev_banner(self, layout: QVBoxLayout) -> None:
+        """Insert a dismissible banner above the tabs when the CH341A udev
+        rule is missing. Suppressed if HDZERO_NO_ESCALATE is set or the rule
+        is already in place — see udev_check.should_show_hint.
+        """
+        if not should_show_hint():
+            return
+
+        rule_src = bundled_rule_path()
+        if not rule_src:
+            # No bundled rule to point at — silent skip rather than a broken
+            # copy-paste line.
+            return
+
+        cmd = install_command(rule_src)
+        banner = QWidget()
+        banner.setStyleSheet(
+            "background:#3a2a00; border:1px solid #6a4a00; border-radius:6px;"
+        )
+        bl = QVBoxLayout(banner)
+        bl.setContentsMargins(10, 8, 10, 8)
+        bl.setSpacing(6)
+
+        msg = QLabel(
+            "CH341A udev rule not installed. Each flash will pop a polkit "
+            "prompt. Run this once to flash without root:"
+        )
+        msg.setWordWrap(True)
+        msg.setStyleSheet("background: transparent; border: none; color:#ffe6a0;")
+
+        cmd_box = QLineEdit(cmd)
+        cmd_box.setReadOnly(True)
+        cmd_box.setStyleSheet(
+            "background:#1a1200; color:#ffeec0; border:1px solid #5a3e00; "
+            "font-family: monospace;"
+        )
+
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        btn_dismiss = QPushButton("Dismiss")
+        btn_dismiss.setStyleSheet(
+            "background:#1f1f1f; color:#fff; border:1px solid #3a3a3a; "
+            "padding:4px 10px; border-radius:4px;"
+        )
+        btn_dismiss.clicked.connect(banner.hide)
+        row.addStretch(1)
+        row.addWidget(btn_dismiss)
+
+        bl.addWidget(msg)
+        bl.addWidget(cmd_box)
+        bl.addLayout(row)
+
+        # Insert above the tabs (index 2: header layout, spacing, then tabs).
+        # insertWidget at index 2 keeps the header on top and pushes tabs down.
+        layout.insertWidget(2, banner)
 
     # ==== Handlers de alto nivel (reutilizados por ambos tabs) ====
     def on_fw_downloaded_set_local(self, path: str):
