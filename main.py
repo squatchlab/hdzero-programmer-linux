@@ -226,7 +226,12 @@ class MainWindow(QWidget):
         # Cross-panel connections
         self.panel_internet.firmwareSelected.connect(self.on_fw_downloaded_set_local)
         self.panel_internet.log.connect(self.panel_local.append_log)
-        self.panel_internet.flashRequested.connect(self.start_flash)  # (path, autobackup)
+        # InternetPanel's path is a tempfile (downloaded blob), so the
+        # FlashWorker should unlink it after use. LocalPanel's path is
+        # user-selected and stays put — see start_flash signature.
+        self.panel_internet.flashRequested.connect(
+            lambda p, a: self.start_flash(p, a, cleanup_fw=True)
+        )
 
         # Tabs with icons
         icon_internet = QIcon(resource_path("internet.png")) if Path(resource_path("internet.png")).exists() else QIcon()
@@ -410,7 +415,7 @@ class MainWindow(QWidget):
         self.panel_local.btn_backup.setEnabled(True)
         self.panel_local.flash_btn.setEnabled(True)
 
-    def start_flash(self, fw_path: str, autobackup: bool = True):
+    def start_flash(self, fw_path: str, autobackup: bool = True, *, cleanup_fw: bool = False):
         if not fw_path or not Path(fw_path).exists():
             QMessageBox.critical(self, "Error", "Select a .bin file.")
             return
@@ -431,7 +436,9 @@ class MainWindow(QWidget):
             ts = time.strftime("%Y%m%d-%H%M%S")
             backup_path = os.path.expanduser(f"~/HDZero_pre-flash_{ts}.bin")
 
-        self.worker = FlashWorker(self.flashrom, fw_path, backup_path=backup_path)
+        self.worker = FlashWorker(
+            self.flashrom, fw_path, backup_path=backup_path, cleanup_fw=cleanup_fw,
+        )
 
         self._open_flash_log("flash")
         self.worker.log.connect(self._flash_log_write)

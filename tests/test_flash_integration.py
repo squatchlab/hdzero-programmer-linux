@@ -170,6 +170,79 @@ def test_safe_flash_handles_path_with_spaces(qt_app, fake_flashrom, small_firmwa
     assert backup_path.stat().st_size == 1024 * 1024
 
 
+# ---------- tempfile cleanup ----------
+
+def test_flash_unlinks_padded_image_after_success(qt_app, fake_flashrom, small_firmware, tmp_path):
+    """The padded-1MiB tempfile is always owned by FlashWorker; it must
+    be unlinked on the success path so /tmp doesn't accumulate stale
+    1MiB blobs across repeated flashes.
+    """
+    import glob
+
+    from flash_ops import FlashWorker
+
+    before = set(glob.glob("/tmp/hdzero_*.bin"))
+    worker = FlashWorker(fake_flashrom, small_firmware, backup_path=None)
+    result = _run_worker(qt_app, worker)
+    assert result["ok"] == [True], result["fails"]
+
+    after = set(glob.glob("/tmp/hdzero_*.bin"))
+    leaked = after - before
+    # Only the download-shaped tempfiles (hdzero_dl_*) are owned elsewhere.
+    leaked_padded = [p for p in leaked if "hdzero_dl_" not in p]
+    assert leaked_padded == [], f"padded image not unlinked: {leaked_padded}"
+
+
+def test_flash_unlinks_padded_image_after_failure(monkeypatch, qt_app, fake_flashrom, small_firmware):
+    """Cleanup runs even when the flash fails — the finally clause covers
+    both branches.
+    """
+    import glob
+
+    from flash_ops import FlashWorker
+
+    monkeypatch.setenv("FAKE_FLASHROM_FAIL", "write")
+    before = set(glob.glob("/tmp/hdzero_*.bin"))
+    worker = FlashWorker(fake_flashrom, small_firmware, backup_path=None)
+    _ = _run_worker(qt_app, worker)
+
+    after = set(glob.glob("/tmp/hdzero_*.bin"))
+    leaked_padded = [p for p in (after - before) if "hdzero_dl_" not in p]
+    assert leaked_padded == [], f"padded image not unlinked on failure: {leaked_padded}"
+
+
+def test_flash_unlinks_source_fw_when_cleanup_flag_set(qt_app, fake_flashrom, tmp_path):
+    """When cleanup_fw=True (InternetPanel-download path), the source
+    firmware tempfile is unlinked too. LocalPanel's user-selected file
+    must NOT be unlinked — separate test below.
+    """
+    from flash_ops import FlashWorker
+
+    fw = tmp_path / "downloaded.bin"
+    fw.write_bytes(b"\x42" * 4096)
+    assert fw.exists()
+
+    worker = FlashWorker(fake_flashrom, str(fw), backup_path=None, cleanup_fw=True)
+    result = _run_worker(qt_app, worker)
+    assert result["ok"] == [True]
+    assert not fw.exists(), "source fw should be unlinked when cleanup_fw=True"
+
+
+def test_flash_preserves_source_fw_when_cleanup_flag_unset(qt_app, fake_flashrom, small_firmware):
+    """The default (cleanup_fw=False) leaves the user's .bin alone. This
+    is the LocalPanel path — the firmware is not the worker's to delete.
+    """
+    import os
+
+    from flash_ops import FlashWorker
+
+    assert os.path.exists(small_firmware)
+    worker = FlashWorker(fake_flashrom, small_firmware, backup_path=None)
+    result = _run_worker(qt_app, worker)
+    assert result["ok"] == [True]
+    assert os.path.exists(small_firmware), "user-selected .bin must not be unlinked"
+
+
 def test_backup_worker_handles_path_with_spaces(qt_app, fake_flashrom, tmp_path):
     from flash_ops import BackupWorker
 
