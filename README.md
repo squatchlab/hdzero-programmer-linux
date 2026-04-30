@@ -39,21 +39,37 @@ Gunther. This fork only adapts it for Linux.
 
 ## Run
 
-Install via pip (recommended):
+### Option A — AppImage (recommended)
+
+Download the latest `HDZeroProgrammer-x86_64.AppImage` from
+[Releases](https://forgejo.squatch.lab/bmags/hdzero-programmer-linux/releases),
+verify, and run:
+
+```bash
+sha256sum -c SHA256SUMS    # both files in the same directory
+chmod +x HDZeroProgrammer-x86_64.AppImage
+./HDZeroProgrammer-x86_64.AppImage
+```
+
+The AppImage bundles Python 3.12, PyQt6, and `requests`. It still
+requires `flashrom` on the host (the app shells out to it) and the
+CH341A access setup below (udev rule or polkit agent).
+
+### Option B — From source
 
 ```bash
 pip install --user .
 hdzero-programmer
 ```
 
-Or run directly out of a checkout:
+Or run directly out of a checkout without installing:
 
 ```bash
 pip install --user PyQt6 requests
 python3 main.py
 ```
 
-Override the firmware index API base if needed:
+### Override the firmware index API base
 
 ```bash
 HDZERO_API_BASE=https://your-mirror.example hdzero-programmer
@@ -102,21 +118,16 @@ script installed by `pip install`. If you run from a checkout without
 installing, edit the installed `.desktop` file's `Exec=` line to
 `python3 /absolute/path/to/main.py`.
 
-## Build a self-contained AppImage (optional)
+## Build the AppImage locally (maintainers)
 
-For distribution to users without a Python toolchain, build a single-file
-AppImage that bundles a relocatable Python 3.12, PyQt6, `requests`, and
-the application source:
+CI builds the AppImage on every push and on every `v*` tag (see
+[Releases](#releases)). Local rebuild for testing packaging changes:
 
 ```bash
 pipx install python-appimage
 ./packaging/build-appimage.sh
 # → dist/HDZeroProgrammer-x86_64.AppImage
 ```
-
-The resulting AppImage still requires `flashrom` on the host (the AppImage
-shells out to it) and the same CH341A access setup described above (udev
-rule or polkit agent).
 
 ## Usage
 

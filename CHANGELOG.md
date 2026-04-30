@@ -6,8 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Post-`v0.2.0` work on `main` not yet tagged. Bumps the next release; until
-then, `__version__` and `pyproject` still read `0.2.0`.
+No changes on `main` since `v0.3.0` yet.
+
+## [0.3.0] - 2026-04-30
+
+Post-acquisition-audit batch. Closes the audit's documentation and
+operational blockers (`#22` HW-CI gate, `#23` SECURITY.md), lands the
+ADR corpus, the mypy gate, the legacy-settings migration, and the
+HTTP-worker refactor. Firmware-trust trio (`#19`/`#20`/`#21`) remains
+open and is the gating set for `v0.4.0`.
 
 ### Added
 - ADR scaffolding under `docs/adr/` with template + index; ADR-0001
