@@ -107,4 +107,8 @@ the content is a normal architecture/onboarding doc — read it on day one.
 
 By contributing, you agree your work is licensed under the project's
 [MIT License](LICENSE), with the binary distribution implications
-documented in [`LICENSE-NOTES.md`](LICENSE-NOTES.md).
+documented in [`LICENSE-NOTES.md`](LICENSE-NOTES.md). The HDZero brand
+is owned by Divimath Inc.; this project is unaffiliated, and the
+ongoing trademark exposure is tracked in
+[`docs/legal/trademark.md`](docs/legal/trademark.md) — including a
+contingency rename plan if the policy ever turns restrictive.
