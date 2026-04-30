@@ -1,0 +1,104 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        run: |
+          set -eux
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            file desktop-file-utils zsync wget jq
+          python -m pip install --upgrade pip
+          pip install pipx
+          pipx install python-appimage
+
+      - name: Build AppImage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          set -eux
+          export PATH="$HOME/.local/bin:$PATH"
+          bash packaging/build-appimage.sh
+
+      - name: Generate SHA256SUMS
+        working-directory: dist
+        run: |
+          set -eux
+          sha256sum HDZeroProgrammer-x86_64.AppImage > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create release and upload assets
+        env:
+          # Forgejo Actions exposes the repo-scoped token under both names.
+          FORGEJO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORGEJO_SERVER: ${{ github.server_url }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -eux
+
+          # Create the release. Idempotent-ish: if a release for this tag
+          # already exists (manual creation, retry), we capture its id and
+          # skip the create step.
+          existing=$(curl -sS \
+            -H "Authorization: token ${FORGEJO_TOKEN}" \
+            "${FORGEJO_SERVER}/api/v1/repos/${REPO}/releases/tags/${TAG}" \
+            -o /tmp/existing.json -w "%{http_code}")
+
+          if [ "${existing}" = "200" ]; then
+            release_id=$(jq -r .id /tmp/existing.json)
+            echo "Reusing existing release id=${release_id}"
+          else
+            jq -n --arg tag "${TAG}" --arg name "${TAG}" '{
+              tag_name: $tag,
+              name: $name,
+              draft: false,
+              prerelease: false,
+              body: "Automated release from tag \($tag). Built by .forgejo/workflows/release.yml. Verify with SHA256SUMS."
+            }' > /tmp/payload.json
+            curl -sS -X POST \
+              -H "Authorization: token ${FORGEJO_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d @/tmp/payload.json \
+              "${FORGEJO_SERVER}/api/v1/repos/${REPO}/releases" \
+              -o /tmp/created.json
+            release_id=$(jq -r .id /tmp/created.json)
+            if [ "${release_id}" = "null" ] || [ -z "${release_id}" ]; then
+              echo "Release creation failed:" >&2
+              cat /tmp/created.json >&2
+              exit 1
+            fi
+            echo "Created release id=${release_id}"
+          fi
+
+          for asset in dist/HDZeroProgrammer-x86_64.AppImage dist/SHA256SUMS; do
+            name=$(basename "${asset}")
+            echo "Uploading ${name}"
+            curl -sS -X POST \
+              -H "Authorization: token ${FORGEJO_TOKEN}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary "@${asset}" \
+              "${FORGEJO_SERVER}/api/v1/repos/${REPO}/releases/${release_id}/assets?name=${name}" \
+              -o /tmp/asset.json -w "HTTP %{http_code}\n"
+          done
+
+      - name: Upload AppImage as workflow artifact too
+        uses: actions/upload-artifact@v3
+        with:
+          name: HDZeroProgrammer-x86_64.AppImage
+          path: dist/HDZeroProgrammer-x86_64.AppImage
+          if-no-files-found: error

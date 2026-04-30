@@ -36,6 +36,8 @@ Distribution target is an **AppImage** built via `packaging/build-appimage.sh` (
 - **smoke** — installs `PyQt6` + `requests`, runs `py_compile`, then boots `MainWindow` headlessly under `QT_QPA_PLATFORM=offscreen` against an unroutable `HDZERO_API_BASE` so the device-loader worker fails fast instead of hitting the live API.
 - **appimage** — installs `pipx` → `python-appimage`, runs `packaging/build-appimage.sh` with `APPIMAGE_EXTRACT_AND_RUN=1` (CI runners lack `/dev/fuse`), and uploads `dist/HDZeroProgrammer-x86_64.AppImage` as a build artifact.
 
+`.forgejo/workflows/release.yml` triggers on `v*` tag pushes: builds the AppImage, generates `SHA256SUMS`, creates a Forgejo release for the tag (or reuses one if it already exists), and uploads both files as release assets via the repo-scoped `${{ secrets.GITHUB_TOKEN }}`. To cut a release: `git tag -a v0.2.0 -m "v0.2.0" && git push origin v0.2.0`.
+
 Requires a registered Forgejo Actions runner labeled `ubuntu-22.04`. With no runner, jobs queue indefinitely — visible in the Actions tab on the repo.
 
 ## Architecture
