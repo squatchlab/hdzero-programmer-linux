@@ -78,12 +78,20 @@ mkdir -p "$INJECT_ABS"
 cp "$REPO_ROOT/main.py"           "$INJECT_ABS/"
 cp "$REPO_ROOT/internet_panel.py" "$INJECT_ABS/"
 cp "$REPO_ROOT/flash_ops.py"      "$INJECT_ABS/"
+cp "$REPO_ROOT/udev_check.py"     "$INJECT_ABS/"
 
 # Image assets used by HelpPanel, LocalPanel, InternetPanel, MainWindow
 cp "$REPO_ROOT"/*.png "$INJECT_ABS/"
 
 # README is loaded at runtime by HelpPanel (tries Readme.md, README.md, Readme,md)
 cp "$REPO_ROOT/README.md" "$INJECT_ABS/README.md"
+
+# udev rule + install helper — udev_check.bundled_rule_path() resolves the
+# rule via resource_path() so the in-app banner can show a working
+# copy-paste install command on AppImage runs.
+cp "$REPO_ROOT/packaging/99-ch341a.rules"  "$INJECT_ABS/"
+cp "$REPO_ROOT/packaging/install-udev.sh"  "$INJECT_ABS/"
+chmod +x "$INJECT_ABS/install-udev.sh"
 
 # Repackage. python-appimage already cached appimagetool somewhere on PATH;
 # fall back to the appimagetool that python-appimage downloaded into ~/.cache.
