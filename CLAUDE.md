@@ -29,6 +29,15 @@ sudo pacman -S flashrom      # Arch
 
 Distribution target is an **AppImage** built via `packaging/build-appimage.sh` (closes #8): uses [`python-appimage`](https://github.com/niess/python-appimage) to graft a relocatable Python 3.12 + PyQt6 + `requests`, then post-injects the application source into `opt/python3.12/lib/python3.12/site-packages/_hdzero_app/`. The generated AppRun (`recipe/entrypoint.sh`) exports `HDZERO_APP_DIR` so `resource_path()` resolves bundled assets out of the inject dir. `resource_path()` checks `HDZERO_APP_DIR` first, then falls back to `sys._MEIPASS` (PyInstaller-compat — no PyInstaller build is currently shipped) and finally the module's directory (pip / checkout).
 
+## CI
+
+`.forgejo/workflows/ci.yml` runs on push to `main` and on pull requests:
+
+- **smoke** — installs `PyQt6` + `requests`, runs `py_compile`, then boots `MainWindow` headlessly under `QT_QPA_PLATFORM=offscreen` against an unroutable `HDZERO_API_BASE` so the device-loader worker fails fast instead of hitting the live API.
+- **appimage** — installs `pipx` → `python-appimage`, runs `packaging/build-appimage.sh` with `APPIMAGE_EXTRACT_AND_RUN=1` (CI runners lack `/dev/fuse`), and uploads `dist/HDZeroProgrammer-x86_64.AppImage` as a build artifact.
+
+Requires a registered Forgejo Actions runner labeled `ubuntu-22.04`. With no runner, jobs queue indefinitely — visible in the Actions tab on the repo.
+
 ## Architecture
 
 Three files, one Qt event loop, worker threads for blocking I/O.
