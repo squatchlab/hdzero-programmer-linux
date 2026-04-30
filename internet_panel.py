@@ -3,8 +3,9 @@ import json
 import os
 import sys
 import tempfile
+import time
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 import requests
 from PyQt6 import QtCore
@@ -45,71 +46,89 @@ def resource_path(relpath: str) -> str:
     base = getattr(sys.modules["__main__"], "_MEIPASS", Path(__file__).parent)
     return str(Path(base) / relpath)
 
-# HTTP workers local to the Internet panel
-class LoadDevicesWorker(QThread):
-    ok = pyqtSignal(list); fail = pyqtSignal(str)
-    def run(self):
-        try:
-            url = f"{API_BASE}/api/devices"
-            r = requests.get(url, timeout=15)
-            r.raise_for_status()
-            self.ok.emit(r.json().get("devices", []))
-        except _HTTP_FAILURES as e:
-            self.fail.emit(str(e))
+# Generic HTTP worker for InternetPanel — single QThread shape with hooks
+# for response shape (raw bytes, JSON parser, streamed-to-tempfile). All
+# four legacy workers (LoadDevices/LoadFirmwares/LoadImage/DownloadFirmware)
+# collapse onto this; uniform retry/backoff/timeout policy lives in one
+# place. See ticket #25 + #37.
+class HttpWorker(QThread):
+    """One QThread for every flavour of HTTP fetch the panel needs.
 
-class LoadFirmwaresWorker(QThread):
-    ok = pyqtSignal(list); fail = pyqtSignal(str)
-    def __init__(self, device_id: int):
-        super().__init__()
-        self.device_id = device_id
-    def run(self):
-        try:
-            url = f"{API_BASE}/api/firmwares/{self.device_id}"
-            r = requests.get(url, timeout=15)
-            r.raise_for_status()
-            self.ok.emit(r.json().get("firmwares", []))
-        except _HTTP_FAILURES as e:
-            self.fail.emit(str(e))
+    - JSON-parsed response: pass `parser=lambda r: r.json().get("foo", [])`.
+      Emitted via `ok` as whatever the parser returns.
+    - Raw bytes: leave `parser` and `stream_to_temp_bin` unset; `ok`
+      emits the response body bytes.
+    - Streamed download to a temp .bin: set `stream_to_temp_bin=True`.
+      `progress` fires with percent (0..100); `ok` emits the temp path.
 
-class LoadImageWorker(QThread):
-    ok = pyqtSignal(bytes); fail = pyqtSignal(str)
-    def __init__(self, url: str):
-        super().__init__()
-        self.url = url
-    def run(self):
-        try:
-            r = requests.get(self.url, timeout=10)
-            r.raise_for_status()
-            self.ok.emit(r.content)
-        except _HTTP_FAILURES as e:
-            self.fail.emit(str(e))
+    Retries on `_HTTP_FAILURES` with exponential backoff
+    (`backoff * 2^attempt`), default 2 retries → 1s, 2s. Each retry is
+    surfaced via `log` so a user investigating a flake sees the
+    attempts. `time.sleep` runs on this worker thread, not the GUI.
+    """
+    ok = pyqtSignal(object)
+    fail = pyqtSignal(str)
+    progress = pyqtSignal(int)
+    log = pyqtSignal(str)
 
-class DownloadFirmwareWorker(QThread):
-    progress = pyqtSignal(int); ok = pyqtSignal(str); fail = pyqtSignal(str)
-    def __init__(self, url: str):
+    def __init__(
+        self,
+        url: str,
+        *,
+        parser: Optional[Callable[[requests.Response], Any]] = None,
+        stream_to_temp_bin: bool = False,
+        timeout: float = 15.0,
+        retries: int = 2,
+        backoff: float = 1.0,
+    ):
         super().__init__()
         self.url = url
+        self.parser = parser
+        self.stream_to_temp_bin = stream_to_temp_bin
+        self.timeout = timeout
+        self.retries = retries
+        self.backoff = backoff
+
     def run(self):
-        try:
-            r = requests.get(self.url, stream=True, timeout=30)
-            r.raise_for_status()
-            total = int(r.headers.get("Content-Length") or 0)
-            tmp = tempfile.NamedTemporaryFile(prefix="hdzero_dl_", suffix=".bin", delete=False)
-            tmp_path = tmp.name
-            tmp.close()
-            read = 0
-            with open(tmp_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    if not chunk:
-                        continue
-                    f.write(chunk)
-                    read += len(chunk)
-                    if total > 0:
-                        self.progress.emit(int(read * 100 / total))
-            self.progress.emit(100)
-            self.ok.emit(tmp_path)
-        except _HTTP_FAILURES as e:
-            self.fail.emit(str(e))
+        last_err: Optional[str] = None
+        for attempt in range(1, self.retries + 2):
+            try:
+                if self.stream_to_temp_bin:
+                    self._stream_download()
+                else:
+                    r = requests.get(self.url, timeout=self.timeout)
+                    r.raise_for_status()
+                    self.ok.emit(self.parser(r) if self.parser else r.content)
+                return
+            except _HTTP_FAILURES as e:
+                last_err = str(e)
+                if attempt <= self.retries:
+                    wait = self.backoff * (2 ** (attempt - 1))
+                    self.log.emit(
+                        f"http attempt {attempt} failed: {last_err}; "
+                        f"retrying in {wait:.1f}s"
+                    )
+                    time.sleep(wait)
+        self.fail.emit(last_err or "unknown error")
+
+    def _stream_download(self):
+        r = requests.get(self.url, stream=True, timeout=self.timeout)
+        r.raise_for_status()
+        total = int(r.headers.get("Content-Length") or 0)
+        tmp = tempfile.NamedTemporaryFile(prefix="hdzero_dl_", suffix=".bin", delete=False)
+        tmp_path = tmp.name
+        tmp.close()
+        read = 0
+        with open(tmp_path, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if not chunk:
+                    continue
+                f.write(chunk)
+                read += len(chunk)
+                if total > 0:
+                    self.progress.emit(int(read * 100 / total))
+        self.progress.emit(100)
+        self.ok.emit(tmp_path)
 
 class InternetPanel(QWidget):
     firmwareSelected = pyqtSignal(str)        # local downloaded path (consumed by Local panel)
@@ -281,9 +300,13 @@ class InternetPanel(QWidget):
         self._arm_loader("device list", self.load_devices)
         self.set_loading("Loading devices…")
         self.cb_devices.clear()
-        w = LoadDevicesWorker()
+        w = HttpWorker(
+            f"{API_BASE}/api/devices",
+            parser=lambda r: r.json().get("devices", []),
+        )
         w.ok.connect(self.on_devices_ok)
         w.fail.connect(self.on_fail)
+        w.log.connect(self.log.emit)
         w.start()
         self._w_dev = w
 
@@ -306,9 +329,13 @@ class InternetPanel(QWidget):
             return
         self.device_img.setText("Loading image…")
         self.device_img.setPixmap(QPixmap())
-        w = LoadImageWorker(url)
+        # Image worker keeps the historic 10s timeout (vs 15s default); a
+        # device thumbnail is small enough that a longer wait is just a UX
+        # delay. Retries default to 2.
+        w = HttpWorker(url, timeout=10.0)
         w.ok.connect(self._on_image_loaded)
         w.fail.connect(self._on_image_failed)
+        w.log.connect(self.log.emit)
         w.start()
         self._w_img = w
 
@@ -338,9 +365,13 @@ class InternetPanel(QWidget):
         self._arm_loader("firmware list", self.on_device_changed)
         self.set_loading("Loading firmwares…")
         self.cb_fw.clear()
-        w = LoadFirmwaresWorker(device_id)
+        w = HttpWorker(
+            f"{API_BASE}/api/firmwares/{device_id}",
+            parser=lambda r: r.json().get("firmwares", []),
+        )
         w.ok.connect(self.on_fw_ok)
         w.fail.connect(self.on_fail)
+        w.log.connect(self.log.emit)
         w.start()
         self._w_fw = w
 
@@ -374,10 +405,13 @@ class InternetPanel(QWidget):
         self.set_phase("Wait - Downloading.")
         self.status_set(f"Downloading: {url}")
         self._arm_loader("download", self.download_selected_fw)
-        w = DownloadFirmwareWorker(url)
+        # Firmware download keeps the historic 30s timeout — payloads are
+        # under 64 KiB but the per-CDN handshake can drag.
+        w = HttpWorker(url, stream_to_temp_bin=True, timeout=30.0)
         w.progress.connect(lambda p: self.set_loading(f"Downloading… {p}%"))
         w.ok.connect(self.on_download_ok_then_flash)
         w.fail.connect(self.on_fail)
+        w.log.connect(self.log.emit)
         w.start()
         self._w_dl = w
 
