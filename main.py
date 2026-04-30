@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 from PyQt6 import QtCore
-from PyQt6.QtCore import QSettings, Qt
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon, QPixmap, QTextCursor
 from PyQt6.QtWidgets import (
     QApplication,
@@ -26,6 +26,8 @@ from PyQt6.QtWidgets import (
 )
 
 from app_logging import backup_dir, open_flash_log
+from app_settings import SETTINGS_KEY_AUTOBACKUP, migrate_settings_once
+from app_settings import settings as _settings
 from flash_ops import HDZERO_MAX, BackupWorker, FlashWorker, find_flashrom
 from internet_panel import InternetPanel, resource_path
 from udev_check import (
@@ -41,10 +43,6 @@ from udev_check import (
 # without dist-info) can still report a version. Kept in sync with
 # pyproject.toml by tests/test_version_consistency.py.
 __version__ = "0.2.0"
-
-SETTINGS_ORG = "HDZero"
-SETTINGS_APP = "Programmer"
-SETTINGS_KEY_AUTOBACKUP = "autobackup"
 
 APP_TITLE = "HDZero Programmer Tool – by Gunther_FPV"
 APP_HEADER_TITLE = "HDZero Programmer (Linux)"
@@ -79,9 +77,8 @@ class LocalPanel(QWidget):
         self.log = QTextEdit(); self.log.setReadOnly(True); layout.addWidget(self.log, 1)
 
         self.cb_autobackup = QCheckBox("Backup chip before flashing (rollback image in ~)")
-        settings = QSettings(SETTINGS_ORG, SETTINGS_APP)
         self.cb_autobackup.setChecked(
-            settings.value(SETTINGS_KEY_AUTOBACKUP, True, type=bool)
+            _settings().value(SETTINGS_KEY_AUTOBACKUP, True, type=bool)
         )
         self.cb_autobackup.toggled.connect(self._persist_autobackup)
         layout.addWidget(self.cb_autobackup)
@@ -131,9 +128,7 @@ class LocalPanel(QWidget):
 
     @staticmethod
     def _persist_autobackup(checked: bool) -> None:
-        QSettings(SETTINGS_ORG, SETTINGS_APP).setValue(
-            SETTINGS_KEY_AUTOBACKUP, checked
-        )
+        _settings().setValue(SETTINGS_KEY_AUTOBACKUP, checked)
 
     def on_backup_pressed(self): self.start_backup_cb()
     def on_flash_pressed(self):
@@ -576,6 +571,7 @@ def main(argv=None) -> int:
 
     app = QApplication([sys.argv[0], *qt_argv])
     _install_excepthook()
+    migrate_settings_once()
     app_icon_path = resource_path("icon256.png")
     if Path(app_icon_path).exists():
         app.setWindowIcon(QIcon(app_icon_path))
