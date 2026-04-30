@@ -1,4 +1,5 @@
 # main.py
+import argparse
 import os
 import sys
 import time
@@ -26,7 +27,19 @@ from PyQt6.QtWidgets import (
 
 from flash_ops import HDZERO_MAX, BackupWorker, FlashWorker, find_flashrom
 from internet_panel import InternetPanel, resource_path
-from udev_check import bundled_rule_path, ch341a_present, install_command, should_show_hint
+from udev_check import (
+    bundled_rule_path,
+    ch341a_present,
+    escalation_disabled,
+    install_command,
+    rule_installed,
+    should_show_hint,
+)
+
+# Hard-coded so AppImage runs (which graft source into site-packages
+# without dist-info) can still report a version. Kept in sync with
+# pyproject.toml by tests/test_version_consistency.py.
+__version__ = "0.2.0"
 
 SETTINGS_ORG = "HDZero"
 SETTINGS_APP = "Programmer"
@@ -406,8 +419,39 @@ class MainWindow(QWidget):
         self.panel_local.flash_btn.setEnabled(True)
         self.panel_local.btn_backup.setEnabled(True)
 
-def main() -> int:
-    app = QApplication(sys.argv)
+def _build_argparser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="hdzero-programmer",
+        description="Linux desktop GUI for flashing HDZero VTX firmware "
+                    "via a CH341A USB SPI programmer.",
+    )
+    p.add_argument("--version", action="version", version=f"hdzero-programmer {__version__}")
+    p.add_argument(
+        "--check-rule",
+        action="store_true",
+        help="Print udev rule status and exit. rc=0 if the rule is installed "
+             "or HDZERO_NO_ESCALATE is set; rc=1 otherwise.",
+    )
+    return p
+
+
+def _run_check_rule() -> int:
+    installed = rule_installed()
+    no_escalate = escalation_disabled()
+    print(f"rule_installed: {installed}")
+    print(f"escalation_disabled: {no_escalate}")
+    return 0 if (installed or no_escalate) else 1
+
+
+def main(argv=None) -> int:
+    parser = _build_argparser()
+    # argparse splits its own flags off; everything else is forwarded to
+    # QApplication so platform plugin args (-style, -platform, …) still work.
+    args, qt_argv = parser.parse_known_args(argv)
+    if args.check_rule:
+        return _run_check_rule()
+
+    app = QApplication([sys.argv[0], *qt_argv])
     app_icon_path = resource_path("icon256.png")
     if Path(app_icon_path).exists():
         app.setWindowIcon(QIcon(app_icon_path))

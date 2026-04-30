@@ -97,6 +97,26 @@ jobs:
           ls -lh dist/
           file dist/HDZeroProgrammer-x86_64.AppImage
 
+      - name: AppImage launch smoke (--version)
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          set -eux
+          chmod +x dist/HDZeroProgrammer-x86_64.AppImage
+          out=$(./dist/HDZeroProgrammer-x86_64.AppImage --version)
+          echo "$out"
+          echo "$out" | grep -E "^hdzero-programmer [0-9]+\.[0-9]+\.[0-9]+"
+
+      - name: AppImage --check-rule smoke
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          # Force the no-escalate path so the check exits 0 on the CI runner
+          # which has no CH341A udev rule installed.
+          HDZERO_NO_ESCALATE: "1"
+        run: |
+          set -eux
+          ./dist/HDZeroProgrammer-x86_64.AppImage --check-rule
+
       - name: Upload AppImage
         uses: actions/upload-artifact@v3
         with:
