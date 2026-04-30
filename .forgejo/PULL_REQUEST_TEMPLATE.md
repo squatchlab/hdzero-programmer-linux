@@ -14,6 +14,8 @@ Why is this change needed? Skip if covered by the linked issue.
 - [ ] If touching flash/backup paths: real-hardware test (note: gated on #22)
 - [ ] CHANGELOG.md entry under `[Unreleased]`
 - [ ] Docs updated if behavior changed
+- [ ] ADR added or referenced if this PR introduces a non-trivial
+      design decision (see `docs/adr/README.md` for criteria)
 
 ## Breaking changes
 

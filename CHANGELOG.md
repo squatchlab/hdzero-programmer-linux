@@ -11,8 +11,15 @@ then, `__version__` and `pyproject` still read `0.2.0`.
 
 ### Added
 - ADR scaffolding under `docs/adr/` with template + index; ADR-0001
-  (single-prompt sh -c chain) and ADR-0002 (1 MiB padded image with 0xFF).
-  (#31 partial)
+  through ADR-0007 covering single-prompt sh -c chain, 1 MiB padded
+  image, pkexec-over-setuid, hardcoded CH341A vendor:product, the
+  provisional `hdzero.go-next.co` trust root, hard-coded `__version__`,
+  and the MIT-source / GPL-binary distribution position. (#31)
+- PR template now has an "ADR added or referenced" checkbox so
+  non-trivial design decisions don't slip through unmarked.
+- `SECURITY.md` with disclosure policy, response timelines, supported
+  versions, and known open security tickets. README links it from a
+  new "Reporting a Vulnerability" section. (#23)
 - Hard timeout on `flashrom` invocations in `FlashWorker` / `BackupWorker`
   so a hung CH341A doesn't block the GUI indefinitely.
 - gitleaks secret scan in CI and as a pre-commit hook.

@@ -78,7 +78,9 @@ ticket #22 tracks the formal CI gate.
 - **Comments**: write WHY, not WHAT. The diff shows what changed; the
   comment should explain the reason a reader can't derive from the code.
 - **ADRs**: non-trivial design decisions get an ADR under `docs/adr/`.
-  See ticket #31 and the ADR template.
+  Use the Nygard template in [`docs/adr/README.md`](docs/adr/README.md).
+  Tick the "ADR added or referenced" item in the PR template when your
+  change qualifies (criteria in the ADR README).
 
 ## Architecture overview
 
