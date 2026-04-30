@@ -2,7 +2,7 @@
 import os
 import tempfile
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, List, Optional, Tuple
 
 import requests
 from PyQt6 import QtCore
@@ -114,6 +114,10 @@ class InternetPanel(QWidget):
         super().__init__()
         self.devices: List[dict] = []
         self.firmwares: List[dict] = []
+        # (label shown on the button, callable that re-runs the failed op).
+        # Set by every loader before kicking; cleared on success; consulted
+        # by the Retry button which sits next to lbl_state.
+        self._last_loader: Optional[Tuple[str, Callable[[], None]]] = None
 
         root = QVBoxLayout(self)
         root.setContentsMargins(10,10,10,10)
@@ -207,9 +211,17 @@ class InternetPanel(QWidget):
         row.addWidget(right_panel, 1)
         root.addLayout(row)
 
+        state_row = QHBoxLayout()
+        state_row.setContentsMargins(0, 0, 0, 0)
         self.lbl_state = QLabel("Ready")
-        root.addWidget(self.lbl_state)
-        
+        self.btn_retry = QPushButton("Retry")
+        self.btn_retry.setVisible(False)
+        self.btn_retry.setStyleSheet("padding:2px 10px;")
+        self.btn_retry.clicked.connect(self._retry_last)
+        state_row.addWidget(self.lbl_state, 1)
+        state_row.addWidget(self.btn_retry, 0)
+        root.addLayout(state_row)
+
         self.lbl_phase = QLabel("Ready.")
         self.lbl_phase.setStyleSheet("color:#dddddd; margin-top:4px;")
         root.addWidget(self.lbl_phase)
@@ -232,13 +244,36 @@ class InternetPanel(QWidget):
     def set_loading(self, msg: str):
         self.lbl_state.setText(msg)
 
+    def _arm_loader(self, label: str, fn: Callable[[], None]) -> None:
+        """Record the most recent loader so a subsequent on_fail() can offer
+        a one-click retry pointing at the right action.
+        """
+        self._last_loader = (label, fn)
+        self.btn_retry.setVisible(False)
+
+    def _clear_loader(self) -> None:
+        self._last_loader = None
+        self.btn_retry.setVisible(False)
+
+    def _retry_last(self) -> None:
+        if self._last_loader is None:
+            return
+        _, fn = self._last_loader
+        self.btn_retry.setVisible(False)
+        fn()
+
     def on_fail(self, msg: str):
         self.set_loading(f"Error: {msg}")
         self.status_append(f"ERROR: {msg}")
         self.log.emit(f"[Internet] ERROR: {msg}\n")
+        if self._last_loader is not None:
+            label, _ = self._last_loader
+            self.btn_retry.setText(f"Retry {label}")
+            self.btn_retry.setVisible(True)
 
     # ===== HTTP logic =====
     def load_devices(self):
+        self._arm_loader("device list", self.load_devices)
         self.set_loading("Loading devices…")
         self.cb_devices.clear()
         w = LoadDevicesWorker()
@@ -248,6 +283,7 @@ class InternetPanel(QWidget):
         self._w_dev = w
 
     def on_devices_ok(self, devices: list):
+        self._clear_loader()
         self.devices = devices or []
         self.cb_devices.clear()
         for d in self.devices:
@@ -294,6 +330,7 @@ class InternetPanel(QWidget):
             return
         self._set_device_image(data.get("image_url") or data.get("image"))
         device_id = data.get("device_id")
+        self._arm_loader("firmware list", self.on_device_changed)
         self.set_loading("Loading firmwares…")
         self.cb_fw.clear()
         w = LoadFirmwaresWorker(device_id)
@@ -303,6 +340,7 @@ class InternetPanel(QWidget):
         self._w_fw = w
 
     def on_fw_ok(self, firmwares: list):
+        self._clear_loader()
         self.firmwares = firmwares or []
         self.cb_fw.clear()
         for fw in self.firmwares:
@@ -330,6 +368,7 @@ class InternetPanel(QWidget):
 
         self.set_phase("Wait - Downloading.")
         self.status_set(f"Downloading: {url}")
+        self._arm_loader("download", self.download_selected_fw)
         w = DownloadFirmwareWorker(url)
         w.progress.connect(lambda p: self.set_loading(f"Downloading… {p}%"))
         w.ok.connect(self.on_download_ok_then_flash)
@@ -338,6 +377,7 @@ class InternetPanel(QWidget):
         self._w_dl = w
 
     def on_download_ok_then_flash(self, local_path: str):
+        self._clear_loader()
         self.firmwareSelected.emit(local_path)
         self.status_append(f"Downloaded: {local_path}")
         self.set_phase("Wait - Prepare firmware")
