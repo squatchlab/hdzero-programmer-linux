@@ -169,7 +169,7 @@ choices. [`CLAUDE.md`](CLAUDE.md) is the day-one onboarding doc.
 
 ## How it works
 
-Five Python modules, one Qt event loop, blocking I/O isolated to QThread
+Six Python modules, one Qt event loop, blocking I/O isolated to QThread
 workers:
 
 - `main.py` — `MainWindow` owns the three tabs and routes signals.
@@ -182,6 +182,9 @@ workers:
   whether the CH341A is currently attached; drives the first-run banner.
 - `app_logging.py` — resolves the per-flash transcript dir under
   `$XDG_STATE_HOME/hdzero-programmer/` and opens line-buffered log files.
+- `app_settings.py` — `QSettings` reverse-DNS scope
+  (`lab.squatch / hdzero-programmer-linux`) plus a one-shot migration
+  from the legacy `HDZero/Programmer` scope.
 
 See `CLAUDE.md` for deeper architecture notes.
 
@@ -189,10 +192,13 @@ See `CLAUDE.md` for deeper architecture notes.
 
 `.forgejo/workflows/ci.yml` runs on every push and pull request:
 
-- **smoke** — `py_compile`, `pytest` against `tests/`, and a headless
-  `MainWindow` boot under `QT_QPA_PLATFORM=offscreen`.
+- **smoke** — `ruff check`, `mypy` (strict on the safety-critical
+  modules; typed signatures on UI plumbing), `gitleaks`, `py_compile`,
+  `pytest --cov` against `tests/`, and a headless `MainWindow` boot
+  under `QT_QPA_PLATFORM=offscreen`.
 - **appimage** — builds the AppImage and uploads it as a workflow
-  artifact (downloadable from the run page).
+  artifact (downloadable from the run page). Smoke-execs `--version`
+  and `--check-rule` against the built image.
 
 Requires a registered Forgejo Actions runner labeled `ubuntu-22.04`.
 
@@ -201,7 +207,7 @@ Requires a registered Forgejo Actions runner labeled `ubuntu-22.04`.
 ```bash
 pip install --user -e ".[dev]"   # pytest + ruff
 pip install --user pre-commit && pre-commit install
-pytest                           # 43 tests, mostly hardware-mock
+pytest                           # 64 tests, mostly hardware-mock
 ruff check .                     # lint
 ```
 
