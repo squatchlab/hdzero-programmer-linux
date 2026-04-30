@@ -175,6 +175,18 @@ See `CLAUDE.md` for deeper architecture notes.
 
 Requires a registered Forgejo Actions runner labeled `ubuntu-22.04`.
 
+## Development
+
+```bash
+pip install --user -e ".[dev]"   # pytest + ruff
+pip install --user pre-commit && pre-commit install
+pytest                           # ~32 tests, mostly hardware-mock
+ruff check .                     # lint
+```
+
+`.pre-commit-config.yaml` runs `ruff` on every commit. CI re-runs the
+same checks against the full tree, so a missed hook still gets caught.
+
 ## Releases
 
 Pushing a `v*` tag triggers `.forgejo/workflows/release.yml`, which builds
