@@ -20,12 +20,14 @@ jobs:
         run: |
           set -eux
           sudo apt-get update
+          # Full Qt runtime set needed at AppImage launch — see ci.yml.
           sudo apt-get install -y --no-install-recommends \
-            file desktop-file-utils zsync wget jq
+            file desktop-file-utils zsync wget jq squashfs-tools \
+            libgl1 libegl1 libxkbcommon0 libdbus-1-3 libfontconfig1 libxcb-cursor0
           python -m pip install --upgrade pip
           pip install pipx
           # Match the pin used in ci.yml so release builds are reproducible.
-          pipx install 'python-appimage==0.34'
+          pipx install 'python-appimage>=1.4,<2'
 
       - name: Build AppImage
         env:
@@ -98,7 +100,7 @@ jobs:
           done
 
       - name: Upload AppImage as workflow artifact too
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: HDZeroProgrammer-x86_64.AppImage
           path: dist/HDZeroProgrammer-x86_64.AppImage

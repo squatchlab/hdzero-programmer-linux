@@ -78,7 +78,7 @@ jobs:
           PY
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: coverage-xml
           path: coverage.xml
@@ -101,13 +101,18 @@ jobs:
           sudo apt-get update
           # appimagetool needs FUSE at runtime; CI containers usually lack
           # /dev/fuse, so we set APPIMAGE_EXTRACT_AND_RUN=1 below to bypass.
+          # libgl1/libegl1/libxkbcommon0/libdbus-1-3/libfontconfig1/libxcb-cursor0
+          # are needed at AppImage runtime by PyQt6 (the `--version` smoke
+          # step launches the AppImage, which imports PyQt6.QtGui before
+          # argparse runs). Same set as the smoke job.
           sudo apt-get install -y --no-install-recommends \
-            file desktop-file-utils zsync wget
+            file desktop-file-utils zsync wget squashfs-tools \
+            libgl1 libegl1 libxkbcommon0 libdbus-1-3 libfontconfig1 libxcb-cursor0
           python -m pip install --upgrade pip
           pip install pipx
           # Pin python-appimage so a future upstream change can't silently
           # break the build. Bump deliberately when validated.
-          pipx install 'python-appimage==0.34'
+          pipx install 'python-appimage>=1.4,<2'
 
       - name: Build AppImage
         env:
@@ -144,7 +149,7 @@ jobs:
           ./dist/HDZeroProgrammer-x86_64.AppImage --check-rule
 
       - name: Upload AppImage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: HDZeroProgrammer-x86_64.AppImage
           path: dist/HDZeroProgrammer-x86_64.AppImage
