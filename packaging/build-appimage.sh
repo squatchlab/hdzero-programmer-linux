@@ -87,6 +87,10 @@ cp "$REPO_ROOT"/*.png "$INJECT_ABS/"
 # README is loaded at runtime by HelpPanel (tries Readme.md, README.md, Readme,md)
 cp "$REPO_ROOT/README.md" "$INJECT_ABS/README.md"
 
+# MIT LICENSE bundled alongside the source so a redistributed AppImage
+# carries upstream attribution per its terms.
+cp "$REPO_ROOT/LICENSE" "$INJECT_ABS/LICENSE"
+
 # udev rule + install helper — udev_check.bundled_rule_path() resolves the
 # rule via resource_path() so the in-app banner can show a working
 # copy-paste install command on AppImage runs.
