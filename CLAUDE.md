@@ -16,7 +16,10 @@ Six top-level Python modules (all listed in `[tool.setuptools].py-modules`;
 the AppImage build copies them into `_hdzero_app/`), one Qt event loop,
 worker threads for blocking I/O. ADRs for non-trivial decisions live in
 [`docs/adr/`](docs/adr/); the 2026-04-29 acquisition audit and its
-open-blocker backlog (`#19`–`#23`) are under [`docs/audits/`](docs/audits/).
+remaining firmware-trust blockers (`#19`–`#21`) are under
+[`docs/audits/`](docs/audits/). `#22` (HW-CI gate) and `#23` (SECURITY.md)
+were closed in the post-audit batch — see `docs/HARDWARE-CI.md` and
+`SECURITY.md`.
 
 - `main.py` — `MainWindow` owns the three tabs and routes flash signals.
   Holds `FlashWorker` / `BackupWorker` references on `self.worker` /
@@ -135,14 +138,23 @@ in `MainWindow`. Do not call `flash_ops` from panels directly.
 
 `.forgejo/workflows/ci.yml` (push to `main` + PRs):
 
-- **smoke** — `pip install -e ".[dev]"`, `ruff check`, `gitleaks detect`,
-  `py_compile` the five modules, `pytest --cov` (no fail-under yet),
+- **smoke** — `pip install -e ".[dev]"`, `ruff check`, `mypy` (strict on
+  `flash_ops` / `udev_check` / `app_logging` / `app_settings`;
+  `disallow_untyped_defs` on `main` / `internet_panel` — see
+  `[tool.mypy]` overrides in `pyproject.toml`), `gitleaks detect`,
+  `py_compile` the six modules, `pytest --cov` (no fail-under yet),
   headless `MainWindow` boot under `QT_QPA_PLATFORM=offscreen` against an
   unroutable `HDZERO_API_BASE`.
 - **appimage** — `python-appimage` (pinned), runs
   `packaging/build-appimage.sh` with `APPIMAGE_EXTRACT_AND_RUN=1` (CI
   lacks `/dev/fuse`), uploads the artifact, smoke-execs `--version` and
   `--check-rule` (with `HDZERO_NO_ESCALATE=1`).
+
+`.forgejo/workflows/hw-test.yml` (manual / `workflow_dispatch`): real-HW
+flash regression gated on `[ubuntu-22.04, hdzero-hw]`. Runner setup
+is host-specific opt-in work; see `docs/HARDWARE-CI.md`. Without an
+`hdzero-hw`-labeled runner the job sits unclaimed forever, which is the
+intended default.
 
 `.forgejo/workflows/release.yml` triggers on `v*` tags: builds the
 AppImage, generates `SHA256SUMS`, creates/updates a Forgejo release with

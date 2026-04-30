@@ -55,7 +55,7 @@ In scope:
 - The packaged AppImage and its build pipeline (`packaging/`,
   `.forgejo/workflows/`).
 - The Python source modules (`main.py`, `internet_panel.py`,
-  `flash_ops.py`, `udev_check.py`, `app_logging.py`).
+  `flash_ops.py`, `udev_check.py`, `app_logging.py`, `app_settings.py`).
 - The bundled udev rule (`packaging/99-ch341a.rules`) and install
   helpers (`packaging/install-udev.sh`).
 - Default trust assumptions about the firmware index API base
