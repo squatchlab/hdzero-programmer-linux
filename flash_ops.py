@@ -1,6 +1,7 @@
 # flash_ops.py
-import os, subprocess, tempfile
-from pathlib import Path
+import os
+import subprocess
+import tempfile
 from typing import Callable, List, Optional
 
 from PyQt6.QtCore import QThread, pyqtSignal
