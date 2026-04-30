@@ -14,7 +14,7 @@ from PyQt6.QtCore import Qt
 
 from internet_panel import InternetPanel, resource_path
 from flash_ops import find_flashrom, FlashWorker, BackupWorker, HDZERO_MAX
-from udev_check import bundled_rule_path, install_command, should_show_hint
+from udev_check import bundled_rule_path, ch341a_present, install_command, should_show_hint
 
 APP_TITLE = "HDZero Programmer Tool – by Gunther_FPV"
 APP_HEADER_TITLE = "HDZero Programmer (Linux)"
@@ -260,6 +260,31 @@ class MainWindow(QWidget):
         # insertWidget at index 2 keeps the header on top and pushes tabs down.
         layout.insertWidget(2, banner)
 
+    def _confirm_ch341a_present(self) -> bool:
+        """Soft-check that a CH341A is enumerated before launching a worker.
+
+        Skipped entirely if HDZERO_SKIP_CH341A_CHECK is set in the env (escape
+        hatch for sandboxed runs without a readable /sys, or for hardware
+        variants we don't recognise yet). When the device is missing we ask
+        rather than block — the user might have a non-CH341A programmer wired
+        through a passthrough flashrom does recognise.
+        """
+        if os.environ.get("HDZERO_SKIP_CH341A_CHECK"):
+            return True
+        if ch341a_present():
+            return True
+
+        reply = QMessageBox.question(
+            self,
+            "No CH341A detected",
+            "No CH341A USB SPI programmer is currently enumerated by the "
+            "kernel.\n\nFlashing now will almost certainly fail at the "
+            "flashrom step. Continue anyway?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        return reply == QMessageBox.StandardButton.Yes
+
     # ==== Handlers de alto nivel (reutilizados por ambos tabs) ====
     def on_fw_downloaded_set_local(self, path: str):
         self.fw_path = Path(path)
@@ -269,6 +294,8 @@ class MainWindow(QWidget):
     def start_backup(self):
         if not self.flashrom or not os.path.exists(self.flashrom):
             QMessageBox.critical(self, "Error", FLASHROM_INSTALL_HINT)
+            return
+        if not self._confirm_ch341a_present():
             return
         ts = time.strftime("%Y%m%d-%H%M%S")
         out = os.path.expanduser(f"~/HDZero_backup_{ts}.bin")
@@ -307,6 +334,8 @@ class MainWindow(QWidget):
             return
         if not self.flashrom or not os.path.exists(self.flashrom):
             QMessageBox.critical(self, "Error", FLASHROM_INSTALL_HINT)
+            return
+        if not self._confirm_ch341a_present():
             return
 
         self.panel_local.flash_btn.setEnabled(False)
