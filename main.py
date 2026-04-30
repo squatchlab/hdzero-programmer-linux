@@ -6,7 +6,7 @@ from typing import Optional
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QLineEdit, QFileDialog,
-    QProgressBar, QTextEdit, QMessageBox, QTabWidget
+    QProgressBar, QTextEdit, QMessageBox, QTabWidget, QCheckBox
 )
 from PyQt6.QtGui import QPixmap, QIcon, QTextCursor
 from PyQt6 import QtCore
@@ -39,6 +39,10 @@ class LocalPanel(QWidget):
         self.pb = QProgressBar(); self.pb.setRange(0, 100); self.pb.setValue(0); layout.addWidget(self.pb)
 
         self.log = QTextEdit(); self.log.setReadOnly(True); layout.addWidget(self.log, 1)
+
+        self.cb_autobackup = QCheckBox("Backup chip before flashing (rollback image in ~)")
+        self.cb_autobackup.setChecked(True)
+        layout.addWidget(self.cb_autobackup)
 
         bottom = QHBoxLayout()
         backup_icon = QIcon(resource_path("backup.png")) if Path(resource_path("backup.png")).exists() else QIcon()
@@ -87,7 +91,7 @@ class LocalPanel(QWidget):
     def on_flash_pressed(self):
         if not self.fw_path or not self.fw_path.exists():
             QMessageBox.critical(self, "Error", "Select or download a .bin file first."); return
-        self.start_flash_cb(str(self.fw_path))
+        self.start_flash_cb(str(self.fw_path), self.cb_autobackup.isChecked())
 
 class HelpPanel(QWidget):
     def __init__(self):
@@ -174,7 +178,7 @@ class MainWindow(QWidget):
         # Conexiones entre paneles
         self.panel_internet.firmwareSelected.connect(self.on_fw_downloaded_set_local)
         self.panel_internet.log.connect(self.panel_local.append_log)
-        self.panel_internet.flashRequested.connect(self.start_flash)
+        self.panel_internet.flashRequested.connect(self.start_flash)  # (path, autobackup)
 
         # Tabs con íconos
         icon_internet = QIcon(resource_path("internet.png")) if Path(resource_path("internet.png")).exists() else QIcon()
@@ -231,7 +235,7 @@ class MainWindow(QWidget):
         self.panel_local.btn_backup.setEnabled(True)
         self.panel_local.flash_btn.setEnabled(True)
 
-    def start_flash(self, fw_path: str):
+    def start_flash(self, fw_path: str, autobackup: bool = True):
         if not fw_path or not Path(fw_path).exists():
             QMessageBox.critical(self, "Error", "Select a .bin file.")
             return
@@ -245,8 +249,12 @@ class MainWindow(QWidget):
         self.panel_local.pb.setValue(0)
         self.panel_local.status.setText("Flashing…")
 
-     
-        self.worker = FlashWorker(self.flashrom, fw_path)
+        backup_path: Optional[str] = None
+        if autobackup:
+            ts = time.strftime("%Y%m%d-%H%M%S")
+            backup_path = os.path.expanduser(f"~/HDZero_pre-flash_{ts}.bin")
+
+        self.worker = FlashWorker(self.flashrom, fw_path, backup_path=backup_path)
 
         self.worker.progress.connect(self.panel_local.pb.setValue)
         self.worker.status.connect(self.panel_local.status.setText)

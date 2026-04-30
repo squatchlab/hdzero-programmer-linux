@@ -5,7 +5,7 @@ from typing import Optional, List
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QComboBox, QTextEdit, QSizePolicy
+    QComboBox, QTextEdit, QSizePolicy, QCheckBox
 )
 from PyQt6.QtGui import QPixmap, QIcon, QTextCursor
 from PyQt6 import QtCore
@@ -91,9 +91,9 @@ class DownloadFirmwareWorker(QThread):
             self.fail.emit(str(e))
 
 class InternetPanel(QWidget):
-    firmwareSelected = pyqtSignal(str)   # path local descargado (lo ve Local)
-    log = pyqtSignal(str)                # logs hacia Local
-    flashRequested = pyqtSignal(str)     # pide flashear un path local
+    firmwareSelected = pyqtSignal(str)        # path local descargado (lo ve Local)
+    log = pyqtSignal(str)                     # logs hacia Local
+    flashRequested = pyqtSignal(str, bool)    # (path local, autobackup)
 
     def __init__(self):
         super().__init__()
@@ -167,10 +167,14 @@ class InternetPanel(QWidget):
             self.btn_flash.setIconSize(QtCore.QSize(22, 22))
         self.btn_flash.clicked.connect(self.download_selected_fw)
 
+        self.cb_autobackup = QCheckBox("Backup chip before flashing")
+        self.cb_autobackup.setChecked(True)
+
         right_col.addWidget(lbl_fw)
         right_col.addWidget(self.cb_fw)
         right_col.addWidget(lbl_notes)
         right_col.addWidget(self.notes, 1)
+        right_col.addWidget(self.cb_autobackup)
         right_col.addWidget(self.btn_flash)
 
         right_panel = QWidget()
@@ -311,7 +315,7 @@ class InternetPanel(QWidget):
         self._w_dl = w
 
     def on_download_ok_then_flash(self, local_path: str):
-        self.firmwareSelected.emit(local_path)          
-        self.status_append(f"Downloaded: {local_path}") 
+        self.firmwareSelected.emit(local_path)
+        self.status_append(f"Downloaded: {local_path}")
         self.set_phase("Wait - Prepare firmware")
-        self.flashRequested.emit(local_path)            
+        self.flashRequested.emit(local_path, self.cb_autobackup.isChecked())
