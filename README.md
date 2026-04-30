@@ -15,8 +15,8 @@ writes, then re-verifies — all in a single privilege prompt.
 ## Credits
 
 This project is a Linux port of the
-[HDZero Programmer Tool for Mac](https://github.com/gvotteler) by
-**Gunther Votteler** (Gunther_FPV).
+[HDZero Programmer Tool for Mac](https://github.com/gvotteler/HDZero-Programmer-Tool-Mac)
+by **Gunther Votteler** (Gunther_FPV).
 
 - Original author: Gunther Votteler — [@gunther_fpv](https://www.instagram.com/gunther_fpv) ·
   [YouTube: FPVecinos](https://www.youtube.com/@FPVecinos)
@@ -152,7 +152,7 @@ Override the directory with `HDZERO_STATE_DIR=/path/to/dir`.
 
 ## How it works
 
-Three Python modules, one Qt event loop, blocking I/O isolated to QThread
+Five Python modules, one Qt event loop, blocking I/O isolated to QThread
 workers:
 
 - `main.py` — `MainWindow` owns the three tabs and routes signals.
@@ -161,6 +161,10 @@ workers:
 - `flash_ops.py` — `flashrom` discovery, 1 MiB padding, and the
   `FlashWorker` / `BackupWorker` QThreads that invoke `flashrom` with
   privilege escalation.
+- `udev_check.py` — detects whether `99-ch341a.rules` is installed and
+  whether the CH341A is currently attached; drives the first-run banner.
+- `app_logging.py` — resolves the per-flash transcript dir under
+  `$XDG_STATE_HOME/hdzero-programmer/` and opens line-buffered log files.
 
 See `CLAUDE.md` for deeper architecture notes.
 
@@ -180,7 +184,7 @@ Requires a registered Forgejo Actions runner labeled `ubuntu-22.04`.
 ```bash
 pip install --user -e ".[dev]"   # pytest + ruff
 pip install --user pre-commit && pre-commit install
-pytest                           # ~32 tests, mostly hardware-mock
+pytest                           # 43 tests, mostly hardware-mock
 ruff check .                     # lint
 ```
 

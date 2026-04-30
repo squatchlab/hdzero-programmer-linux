@@ -81,7 +81,9 @@ jobs:
             file desktop-file-utils zsync wget
           python -m pip install --upgrade pip
           pip install pipx
-          pipx install python-appimage
+          # Pin python-appimage so a future upstream change can't silently
+          # break the build. Bump deliberately when validated.
+          pipx install 'python-appimage==0.34'
 
       - name: Build AppImage
         env:

@@ -24,7 +24,8 @@ jobs:
             file desktop-file-utils zsync wget jq
           python -m pip install --upgrade pip
           pip install pipx
-          pipx install python-appimage
+          # Match the pin used in ci.yml so release builds are reproducible.
+          pipx install 'python-appimage==0.34'
 
       - name: Build AppImage
         env:
