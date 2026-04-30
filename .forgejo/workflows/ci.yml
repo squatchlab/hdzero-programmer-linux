@@ -102,7 +102,7 @@ jobs:
           # appimagetool needs FUSE at runtime; CI containers usually lack
           # /dev/fuse, so we set APPIMAGE_EXTRACT_AND_RUN=1 below to bypass.
           sudo apt-get install -y --no-install-recommends \
-            file desktop-file-utils zsync wget
+            file desktop-file-utils zsync wget squashfs-tools
           python -m pip install --upgrade pip
           pip install pipx
           # Pin python-appimage so a future upstream change can't silently

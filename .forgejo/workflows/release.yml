@@ -21,7 +21,7 @@ jobs:
           set -eux
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            file desktop-file-utils zsync wget jq
+            file desktop-file-utils zsync wget jq squashfs-tools
           python -m pip install --upgrade pip
           pip install pipx
           # Match the pin used in ci.yml so release builds are reproducible.
