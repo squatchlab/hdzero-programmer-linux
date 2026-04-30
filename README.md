@@ -161,6 +161,12 @@ Chip backups (manual + pre-flash auto) land under
 > not auto-moved — `mv ~/HDZero_*.bin ~/.local/state/hdzero-programmer/backups/`
 > if you want them in the new location.
 
+## Architecture
+
+See [`docs/adr/`](docs/adr/) for the architecture decision records covering
+the safe-flash chain, the 1 MiB pad invariant, and other non-trivial design
+choices. [`CLAUDE.md`](CLAUDE.md) is the day-one onboarding doc.
+
 ## How it works
 
 Five Python modules, one Qt event loop, blocking I/O isolated to QThread
