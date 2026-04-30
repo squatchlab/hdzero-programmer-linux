@@ -117,7 +117,8 @@ class FlashWorker(QThread):
     ok       = pyqtSignal()
     fail     = pyqtSignal(str)
 
-    def __init__(self, flashrom_path: str, fw_path: str, backup_path: Optional[str] = None):
+    def __init__(self, flashrom_path: str, fw_path: str, backup_path: Optional[str] = None,
+                 cleanup_fw: bool = False):
         super().__init__()
         self.flashrom = flashrom_path
         self.fw = fw_path
@@ -125,8 +126,13 @@ class FlashWorker(QThread):
         # has a rollback image. The whole pipeline runs under one privilege
         # prompt via `sh -c '... && ... && ...'`.
         self.backup_path = backup_path
+        # When True, the worker unlinks self.fw after run() finishes. Set by
+        # callers passing a tempfile they own (InternetPanel's downloaded
+        # firmware blob); LocalPanel's user-selected .bin must stay False.
+        self.cleanup_fw = cleanup_fw
 
     def run(self):
+        padded: Optional[str] = None
         try:
             self.status.emit("Wait - Prepare firmware")
             self.progress.emit(5)
@@ -193,6 +199,22 @@ class FlashWorker(QThread):
             self.ok.emit()
         except Exception as e:
             self.fail.emit(str(e))
+        finally:
+            # Unlink the padded image we always own. Best-effort: if the
+            # path is gone, that's fine; if unlink fails, log and move on
+            # rather than masking the original outcome.
+            if padded is not None:
+                try:
+                    os.unlink(padded)
+                except OSError as cleanup_err:
+                    self.log.emit(f"(temp cleanup: {cleanup_err})\n")
+            # Unlink the source firmware only when caller flagged it as a
+            # tempfile they handed off (InternetPanel download path).
+            if self.cleanup_fw:
+                try:
+                    os.unlink(self.fw)
+                except OSError as cleanup_err:
+                    self.log.emit(f"(fw cleanup: {cleanup_err})\n")
 
 
 class BackupWorker(QThread):
