@@ -1,5 +1,6 @@
 # flash_ops.py
 import os
+import select
 import shlex
 import subprocess
 import tempfile
@@ -102,34 +103,52 @@ def run_admin_streaming(
     )
     assert proc.stdout is not None
     deadline = time.monotonic() + timeout
+
+    def _kill_after_timeout(reason: str) -> int:
+        line_cb(f"(timeout: {reason}; terminating flashrom)\n")
+        proc.terminate()
+        try:
+            return proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            line_cb("(timeout: SIGTERM ignored, sending SIGKILL)\n")
+            proc.kill()
+            return proc.wait()
+
     try:
-        for line in proc.stdout:
-            line_cb(line)
-            if time.monotonic() >= deadline:
-                # Streaming is past the cap. Break out, drop into the
-                # kill path below. Don't read further lines — the process
-                # may be producing them at a slow drip and we want out now.
-                line_cb(f"(timeout: exceeded {timeout:.0f}s; terminating flashrom)\n")
-                proc.terminate()
-                try:
-                    return proc.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    line_cb("(timeout: SIGTERM ignored, sending SIGKILL)\n")
-                    proc.kill()
-                    return proc.wait()
-        # stdout closed normally; let proc.wait() pick up the exit code,
-        # still bounded by the remaining wall-clock budget.
+        # Poll the stdout fd with `select` so the deadline check fires
+        # even when the child is wedged with no output (e.g. a hung
+        # flashrom mid-erase). Plain `for line in proc.stdout:` blocks
+        # on readline until EOF, which would let a wedged process burn
+        # through the entire wall-clock budget before we noticed.
+        buf = ""
+        fd = proc.stdout.fileno()
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return _kill_after_timeout(f"exceeded {timeout:.0f}s")
+            # 1s poll keeps the deadline check responsive without
+            # busy-looping. select returns ready fds OR timeout-empty.
+            ready, _, _ = select.select([fd], [], [], min(1.0, remaining))
+            if not ready:
+                continue
+            chunk = os.read(fd, 4096)
+            if not chunk:  # EOF — process closed stdout
+                if buf:
+                    line_cb(buf)
+                break
+            buf += chunk.decode(errors="replace")
+            while "\n" in buf:
+                line, buf = buf.split("\n", 1)
+                line_cb(line + "\n")
+                if time.monotonic() >= deadline:
+                    return _kill_after_timeout(f"exceeded {timeout:.0f}s")
+
+        # stdout closed; bound proc.wait() by what's left of the budget.
         remaining = max(0.0, deadline - time.monotonic())
         try:
             return proc.wait(timeout=remaining)
         except subprocess.TimeoutExpired:
-            line_cb(f"(timeout: exceeded {timeout:.0f}s after stdout close; terminating)\n")
-            proc.terminate()
-            try:
-                return proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                return proc.wait()
+            return _kill_after_timeout(f"exceeded {timeout:.0f}s after stdout close")
     finally:
         # If we returned via kill, proc.stdout might still be open. Close
         # it so we don't leak the FD.
