@@ -239,7 +239,11 @@ class FlashWorker(QThread):
             if self.backup_path:
                 self.log.emit(f"\nPre-flash backup saved: {self.backup_path}\n")
             self.ok.emit()
-        except Exception as e:
+        except (subprocess.SubprocessError, OSError, RuntimeError) as e:
+            # RuntimeError covers our own raise-on-rc-nonzero, OSError covers
+            # padding/IO, SubprocessError covers Popen/wait failures. Programmer
+            # errors (TypeError, AttributeError) propagate so they surface
+            # honestly rather than masquerading as flash failures.
             self.fail.emit(str(e))
         finally:
             # Unlink the padded image we always own. Best-effort: if the
@@ -282,5 +286,5 @@ class BackupWorker(QThread):
                 self.log.emit(r.stderr)
                 raise RuntimeError("Backup failed")
             self.ok.emit(self.out)
-        except Exception as e:
+        except (subprocess.SubprocessError, OSError, RuntimeError) as e:
             self.fail.emit(str(e))

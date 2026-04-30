@@ -85,13 +85,14 @@ def bundled_rule_path() -> str:
     matches — caller can degrade the hint accordingly.
     """
     # Lazy import so the module stays usable in test environments that have
-    # not configured resource discovery.
+    # not configured resource discovery. ImportError covers PyQt6 missing
+    # in tests; OSError covers a path-resolution failure on resource_path.
     try:
         from internet_panel import resource_path
         cand = resource_path(RULE_FILENAME)
         if Path(cand).is_file():
             return cand
-    except Exception:
+    except (ImportError, OSError):
         pass
 
     checkout = Path(__file__).resolve().parent / "packaging" / RULE_FILENAME
