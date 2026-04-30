@@ -30,11 +30,25 @@ jobs:
       - name: ruff
         run: ruff check .
 
+      - name: gitleaks
+        # Scan full history on push to main; staged diff is already covered
+        # by the pre-commit hook. Use --no-git for forks/runners that don't
+        # have full history fetched.
+        run: |
+          set -eux
+          curl -sSL -o /tmp/gitleaks.tar.gz \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          /tmp/gitleaks detect --source . --redact --verbose
+
       - name: py_compile
-        run: python -m py_compile flash_ops.py main.py internet_panel.py
+        run: python -m py_compile flash_ops.py main.py internet_panel.py udev_check.py app_logging.py
 
       - name: pytest
-        run: pytest -q
+        # --cov measures coverage; no --cov-fail-under yet — first establish
+        # the floor by reading the report on a few runs, then gate. Ticket
+        # tracks the threshold bump.
+        run: pytest -q --cov=. --cov-report=term-missing --cov-report=xml
 
       - name: Headless Qt boot smoke
         env:
@@ -59,6 +73,13 @@ jobs:
           assert fw.backup_path == "/tmp/b.bin"
           print("smoke ok")
           PY
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: warn
 
   appimage:
     runs-on: ubuntu-22.04

@@ -17,3 +17,11 @@ repos:
         # files don't churn unprompted. Drop --check once the codebase is
         # fully formatted (or sooner if you want the bulk reformat).
         args: [--check]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+        # Scan staged diff for accidental secrets (API keys, tokens, PEM
+        # blocks, JWTs). Allowlist via .gitleaks.toml if a false positive
+        # lands — do not disable the hook to silence one finding.
