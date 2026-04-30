@@ -35,14 +35,14 @@ Three files, one Qt event loop, worker threads for blocking I/O.
 
 - `main.py` — `MainWindow` owns the three tabs and the high-level `start_backup` / `start_flash` orchestration. Owns `FlashWorker` / `BackupWorker` lifetimes (assigned to `self.worker` / `self.bkw` to keep QThreads alive).
 - `internet_panel.py` — `InternetPanel` tab + four `QThread` HTTP workers (`LoadDevicesWorker`, `LoadFirmwaresWorker`, `LoadImageWorker`, `DownloadFirmwareWorker`) hitting `HDZERO_API_BASE` (default `https://hdzero.go-next.co`, override via env var). Endpoints: `/api/devices`, `/api/firmwares/{device_id}`. Selecting a firmware downloads to a temp `.bin`, then emits `flashRequested`. Two status surfaces in this panel are easy to confuse: `lbl_state` is the short single-line status above the phase line; `lbl_phase` is the "Wait - …" phase indicator written by `set_phase()` and driven by `FlashWorker.status`. The `status_box` `QTextEdit` is the verbose log mirror.
-- `flash_ops.py` — `flashrom` discovery, `make_padded_image_1mib` (pads firmware to 1 MiB with `0xFF`, mandatory for W25Q80), and the `FlashWorker` / `BackupWorker` QThreads. Privileged `flashrom` invocation goes through `run_admin()` (pkexec → sudo -A → sudo -n → clear-error fallback) — single GUI password prompt per op (deliberate UX choice; do not split a flash into multiple privileged calls).
+- `flash_ops.py` — `flashrom` discovery, `make_padded_image_1mib` (pads firmware to 1 MiB with `0xFF`, mandatory for W25Q80), and the `FlashWorker` / `BackupWorker` QThreads. Privileged `flashrom` invocation goes through `run_admin()` (buffered) or `run_admin_streaming()` (line callback for live phase updates); both share `_build_admin_argv()` (pkexec → sudo -A → sudo -n → clear-error fallback). `FlashWorker` runs a single-prompt `sh -c` chain — optional pre-flash backup (`-r`) → write (`-w`) → explicit re-verify (`-v`) — joined with `&&` so a failure short-circuits and the user sees one polkit prompt for the whole sequence (deliberate UX choice; do not split a flash into multiple privileged calls).
 
 ### Cross-panel signal wiring (`MainWindow.__init__`)
 
 `InternetPanel` is decoupled from flash logic — it emits, `MainWindow` routes:
 
 - `panel_internet.firmwareSelected` → `on_fw_downloaded_set_local` (populates `LocalPanel` path)
-- `panel_internet.flashRequested` → `start_flash`
+- `panel_internet.flashRequested(str, bool)` → `start_flash(fw_path, autobackup)` — second arg drives the pre-flash backup phase
 - `panel_internet.log` → `panel_local.append_log`
 - `FlashWorker.status` / `.log` are connected to **both** `panel_local` and `panel_internet` so progress shows on whichever tab the user is viewing.
 
@@ -52,7 +52,7 @@ When adding a new flash trigger, follow this pattern: emit a request signal from
 
 - `HDZERO_MAX = 64 * 1024` — UI rejects `.bin` larger than 64 KB (HDZero firmware ceiling).
 - `FLASH_SIZE_BYTES = 1 MiB` — chip size; the padded image written via `flashrom -p ch341a_spi -w` must be exactly this.
-- `flashrom -p ch341a_spi -r` is the backup command (full chip read to `~/HDZero_backup_<timestamp>.bin`).
+- `flashrom -p ch341a_spi -r` is the backup command. Manual backups land at `~/HDZero_backup_<timestamp>.bin`; pre-flash auto-backups (when the "Backup chip before flashing" checkbox is on, default) land at `~/HDZero_pre-flash_<timestamp>.bin` and are produced by the same chained `flashrom -r` step inside `FlashWorker`.
 
 ## Gotchas
 
