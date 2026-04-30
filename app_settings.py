@@ -8,6 +8,8 @@ under the maintainer's domain so the two stores never collide.
 `migrate_settings_once()` copies the legacy keys forward exactly once;
 the legacy file is left intact so a downgrade still finds its data.
 """
+from typing import Optional
+
 from PyQt6.QtCore import QSettings
 
 LEGACY_SETTINGS_ORG = "HDZero"
@@ -28,7 +30,10 @@ def settings() -> QSettings:
     return QSettings(SETTINGS_ORG, SETTINGS_APP)
 
 
-def migrate_settings_once() -> None:
+def migrate_settings_once(
+    new: Optional[QSettings] = None,
+    old: Optional[QSettings] = None,
+) -> None:
     """Copy legacy `HDZero/Programmer` keys into the new scope on first run.
 
     Skipped if the sentinel `_migrated_from_legacy_org` is already set in
@@ -36,12 +41,24 @@ def migrate_settings_once() -> None:
     not overwritten — if a user sets a value under the new scope before
     migration runs (unlikely but possible across versions), their choice
     wins.
+
+    The optional `new` and `old` arguments exist so tests can inject
+    QSettings instances pinned to explicit on-disk paths, sidestepping
+    PyQt6's QStandardPaths cache that otherwise makes XDG-based isolation
+    flaky in a same-process pytest run.
     """
-    new = settings()
+    if new is None:
+        new = settings()
+    if old is None:
+        old = QSettings(LEGACY_SETTINGS_ORG, LEGACY_SETTINGS_APP)
     if new.value(_KEY_MIGRATED, False, type=bool):
         return
-    old = QSettings(LEGACY_SETTINGS_ORG, LEGACY_SETTINGS_APP)
     for key in old.allKeys():
         if not new.contains(key):
             new.setValue(key, old.value(key))
     new.setValue(_KEY_MIGRATED, True)
+    # Force flush. QSettings auto-syncs on a timer / on destruction, but a
+    # crash in the same launch — or another QSettings instance reading the
+    # new scope before the timer fires — would miss the migrated keys
+    # otherwise. Explicit sync also makes the test suite hermetic.
+    new.sync()
