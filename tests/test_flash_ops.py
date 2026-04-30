@@ -143,3 +143,29 @@ def test_run_admin_returns_127_when_no_escalation_tool(monkeypatch):
     assert isinstance(r, subprocess.CompletedProcess)
     assert r.returncode == 127
     assert "No privilege escalation tool" in r.stderr
+
+
+# ---------- run_admin_streaming timeout ----------
+
+def test_run_admin_streaming_terminates_on_timeout(monkeypatch):
+    """A wedged shell command (here: `sleep 30`) is killed by the
+    timeout path rather than hanging the caller indefinitely. Tests the
+    SIGTERM branch; the SIGKILL fallback path is bounded but harder to
+    force deterministically.
+    """
+    import time as _t
+
+    from flash_ops import run_admin_streaming
+
+    monkeypatch.setenv("HDZERO_NO_ESCALATE", "1")
+
+    lines = []
+    t0 = _t.monotonic()
+    rc = run_admin_streaming("echo started; sleep 30", lines.append, timeout=1.0)
+    elapsed = _t.monotonic() - t0
+
+    assert elapsed < 8.0, f"timeout path took too long: {elapsed:.1f}s"
+    assert rc != 0
+    blob = "".join(lines)
+    assert "started" in blob
+    assert "timeout" in blob.lower()

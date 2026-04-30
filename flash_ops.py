@@ -3,6 +3,7 @@ import os
 import shlex
 import subprocess
 import tempfile
+import time
 from typing import Callable, List, Optional
 
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -76,10 +77,20 @@ def run_admin(cmd: str) -> subprocess.CompletedProcess:
     return subprocess.run(argv, text=True, capture_output=True)
 
 
-def run_admin_streaming(cmd: str, line_cb: Callable[[str], None]) -> int:
+def run_admin_streaming(
+    cmd: str,
+    line_cb: Callable[[str], None],
+    timeout: float = 600.0,
+) -> int:
     """Elevated execution with line-by-line stdout streaming so the GUI can
     update phase/status while a long flashrom pipeline runs. stderr is folded
     into stdout to keep ordering. Returns the process exit code.
+
+    `timeout` is a wall-clock cap on the whole pipeline (default 10 min).
+    A legitimate W25Q80 1 MiB write at CH341A USB-SPI rates is well under
+    2 minutes; if 10 minutes elapse, the process is wedged and the GUI is
+    better off killing it than hanging on `proc.wait()` forever. SIGTERM is
+    sent first; if the process doesn't exit within 5s, SIGKILL.
     """
     argv = _build_admin_argv(cmd)
     if argv is None:
@@ -90,9 +101,40 @@ def run_admin_streaming(cmd: str, line_cb: Callable[[str], None]) -> int:
         text=True, bufsize=1,
     )
     assert proc.stdout is not None
-    for line in proc.stdout:
-        line_cb(line)
-    return proc.wait()
+    deadline = time.monotonic() + timeout
+    try:
+        for line in proc.stdout:
+            line_cb(line)
+            if time.monotonic() >= deadline:
+                # Streaming is past the cap. Break out, drop into the
+                # kill path below. Don't read further lines — the process
+                # may be producing them at a slow drip and we want out now.
+                line_cb(f"(timeout: exceeded {timeout:.0f}s; terminating flashrom)\n")
+                proc.terminate()
+                try:
+                    return proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    line_cb("(timeout: SIGTERM ignored, sending SIGKILL)\n")
+                    proc.kill()
+                    return proc.wait()
+        # stdout closed normally; let proc.wait() pick up the exit code,
+        # still bounded by the remaining wall-clock budget.
+        remaining = max(0.0, deadline - time.monotonic())
+        try:
+            return proc.wait(timeout=remaining)
+        except subprocess.TimeoutExpired:
+            line_cb(f"(timeout: exceeded {timeout:.0f}s after stdout close; terminating)\n")
+            proc.terminate()
+            try:
+                return proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                return proc.wait()
+    finally:
+        # If we returned via kill, proc.stdout might still be open. Close
+        # it so we don't leak the FD.
+        if proc.stdout and not proc.stdout.closed:
+            proc.stdout.close()
 
 
 def make_padded_image_1mib(fw_path: str) -> str:
