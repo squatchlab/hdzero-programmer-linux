@@ -45,3 +45,8 @@ def migrate_settings_once() -> None:
         if not new.contains(key):
             new.setValue(key, old.value(key))
     new.setValue(_KEY_MIGRATED, True)
+    # Force flush. QSettings auto-syncs on a timer / on destruction, but a
+    # crash in the same launch — or another QSettings instance reading the
+    # new scope before the timer fires — would miss the migrated keys
+    # otherwise. Explicit sync also makes the test suite hermetic.
+    new.sync()
