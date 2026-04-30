@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from app_logging import open_flash_log
 from flash_ops import HDZERO_MAX, BackupWorker, FlashWorker, find_flashrom
 from internet_panel import InternetPanel, resource_path
 from udev_check import (
@@ -299,6 +300,44 @@ class MainWindow(QWidget):
         # insertWidget at index 2 keeps the header on top and pushes tabs down.
         layout.insertWidget(2, banner)
 
+    def _open_flash_log(self, prefix: str) -> None:
+        """Open a fresh on-disk transcript for the upcoming op.
+
+        Stored on `self` so the close path can find it. Mirrors GUI log +
+        phase status into the file via signal connections set up by the
+        caller, which means a crash mid-flash still leaves the partial
+        transcript on disk for debugging.
+        """
+        try:
+            self._flash_log_path, self._flash_log_fh = open_flash_log(
+                prefix, __version__,
+            )
+        except OSError as e:
+            # Disk-full, EROFS, broken XDG_STATE_HOME — degrade silently.
+            # The GUI log is still the source of truth for the user.
+            self._flash_log_path = None
+            self._flash_log_fh = None
+            self.panel_local.append_log(f"(flash log disabled: {e})\n")
+
+    def _flash_log_write(self, text: str) -> None:
+        fh = getattr(self, "_flash_log_fh", None)
+        if fh is None:
+            return
+        fh.write(text if text.endswith("\n") else text + "\n")
+
+    def _close_flash_log(self, summary: str) -> None:
+        fh = getattr(self, "_flash_log_fh", None)
+        path = getattr(self, "_flash_log_path", None)
+        if fh is None:
+            return
+        try:
+            fh.write(f"=== {summary} ===\n")
+        finally:
+            fh.close()
+        self._flash_log_fh = None
+        if path is not None:
+            self.panel_local.append_log(f"Transcript: {path}\n")
+
     def _confirm_ch341a_present(self) -> bool:
         """Soft-check that a CH341A is enumerated before launching a worker.
 
@@ -343,13 +382,16 @@ class MainWindow(QWidget):
         self.panel_local.status.setText("Backing up…")
         self.panel_local.pb.setRange(0, 0)
 
+        self._open_flash_log("backup")
         self.bkw = BackupWorker(self.flashrom, out)
+        self.bkw.log.connect(self._flash_log_write)
         self.bkw.log.connect(self.panel_local.append_log)
         self.bkw.ok.connect(self.on_backup_ok)
         self.bkw.fail.connect(self.on_backup_fail)
         self.bkw.start()
 
     def on_backup_ok(self, out_path: str):
+        self._close_flash_log(f"OK: backup saved {out_path}")
         self.panel_local.status.setText("✅ Backup done")
         self.panel_local.pb.setRange(0, 100)
         self.panel_local.pb.setValue(100)
@@ -359,6 +401,7 @@ class MainWindow(QWidget):
         self.panel_local.flash_btn.setEnabled(True)
 
     def on_backup_fail(self, msg: str):
+        self._close_flash_log(f"FAIL: {msg}")
         self.panel_local.status.setText("❌ Backup error")
         self.panel_local.pb.setRange(0, 100)
         self.panel_local.pb.setValue(100)
@@ -390,6 +433,10 @@ class MainWindow(QWidget):
 
         self.worker = FlashWorker(self.flashrom, fw_path, backup_path=backup_path)
 
+        self._open_flash_log("flash")
+        self.worker.log.connect(self._flash_log_write)
+        self.worker.status.connect(lambda s: self._flash_log_write(f"[status] {s}"))
+
         self.worker.progress.connect(self.panel_local.pb.setValue)
         self.worker.status.connect(self.panel_local.status.setText)
         self.worker.log.connect(self.panel_local.append_log)
@@ -403,6 +450,7 @@ class MainWindow(QWidget):
         self.worker.start()
 
     def on_flash_ok(self):
+        self._close_flash_log("OK: flash completed and verified")
         self.panel_local.status.setText("✅ Done")
         self.panel_local.pb.setValue(100)
         self.panel_internet.status_append("Finished.")
@@ -411,6 +459,7 @@ class MainWindow(QWidget):
         self.panel_local.btn_backup.setEnabled(True)
 
     def on_flash_fail(self, msg: str):
+        self._close_flash_log(f"FAIL: {msg}")
         self.panel_local.status.setText("❌ Error")
         self.panel_local.pb.setValue(100)
         self.panel_internet.status_append(f"ERROR: {msg}")
