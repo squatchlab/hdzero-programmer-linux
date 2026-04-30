@@ -13,7 +13,6 @@ from flash_ops import (
     run_admin,
 )
 
-
 # ---------- make_padded_image_1mib ----------
 
 def test_padded_image_pads_to_1mib_with_ff(tmp_path):

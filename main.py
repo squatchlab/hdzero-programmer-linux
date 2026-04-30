@@ -1,24 +1,36 @@
 # main.py
-import os, sys, time
+import os
+import sys
+import time
 from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QLineEdit, QFileDialog,
-    QProgressBar, QTextEdit, QMessageBox, QTabWidget, QCheckBox
-)
-from PyQt6.QtGui import QPixmap, QIcon, QTextCursor
 from PyQt6 import QtCore
-from PyQt6.QtCore import Qt, QSettings
+from PyQt6.QtCore import QSettings, Qt
+from PyQt6.QtGui import QIcon, QPixmap, QTextCursor
+from PyQt6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QTabWidget,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
+from flash_ops import HDZERO_MAX, BackupWorker, FlashWorker, find_flashrom
+from internet_panel import InternetPanel, resource_path
+from udev_check import bundled_rule_path, ch341a_present, install_command, should_show_hint
 
 SETTINGS_ORG = "HDZero"
 SETTINGS_APP = "Programmer"
 SETTINGS_KEY_AUTOBACKUP = "autobackup"
-
-from internet_panel import InternetPanel, resource_path
-from flash_ops import find_flashrom, FlashWorker, BackupWorker, HDZERO_MAX
-from udev_check import bundled_rule_path, ch341a_present, install_command, should_show_hint
 
 APP_TITLE = "HDZero Programmer Tool – by Gunther_FPV"
 APP_HEADER_TITLE = "HDZero Programmer (Linux)"

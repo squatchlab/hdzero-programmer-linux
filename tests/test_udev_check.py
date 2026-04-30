@@ -1,7 +1,4 @@
-import os
-from pathlib import Path
 
-import pytest
 
 import udev_check
 from udev_check import (
@@ -12,7 +9,6 @@ from udev_check import (
     rule_installed,
     should_show_hint,
 )
-
 
 # ---------- rule_installed ----------
 

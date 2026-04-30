@@ -9,12 +9,10 @@ the fake binary via `sh -c` as the current user, no pkexec/sudo. The
 fake flashrom (tests/fixtures/fake_flashrom.sh) emits stdout markers
 matching the patterns FlashWorker.run() greps for live phase status.
 """
-import os
 import stat
 from pathlib import Path
 
 import pytest
-
 
 FIXTURE = Path(__file__).parent / "fixtures" / "fake_flashrom.sh"
 

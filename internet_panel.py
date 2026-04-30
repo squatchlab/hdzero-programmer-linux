@@ -1,15 +1,24 @@
 # internet_panel.py
-import os, tempfile, requests
+import os
+import tempfile
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
 
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QComboBox, QTextEdit, QSizePolicy, QCheckBox
-)
-from PyQt6.QtGui import QPixmap, QIcon, QTextCursor
+import requests
 from PyQt6 import QtCore
-from PyQt6.QtCore import Qt, QThread, QSettings, pyqtSignal
+from PyQt6.QtCore import QSettings, Qt, QThread, pyqtSignal
+from PyQt6.QtGui import QIcon, QPixmap, QTextCursor
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 # Keep these in sync with the constants in main.py — single shared key so
 # toggling on either tab persists app-wide.

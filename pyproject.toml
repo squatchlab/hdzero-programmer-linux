@@ -37,6 +37,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8",
+    "ruff>=0.5",
 ]
 
 [project.urls]
@@ -52,3 +53,21 @@ py-modules = ["main", "internet_panel", "flash_ops"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+# Pyflakes (F), pycodestyle errors/warnings (E/W), and isort (I) cover the
+# bug-class lint we actually care about. The ignores below preserve the
+# upstream code style this project inherited from the macOS fork — compact
+# multi-statement lines and mixed-import lines are deliberate.
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E401",  # multiple imports on one line — codebase style
+    "E701",  # multiple statements on one line (colon) — same
+    "E702",  # statement ends with semicolon — same
+    "E501",  # line too long — line-length already permissive
+    "W293",  # blank line contains whitespace — cosmetic
+]
