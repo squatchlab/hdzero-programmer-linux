@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hdzero-programmer"
-version = "0.2.0"
+version = "0.3.0"
 description = "Linux desktop GUI for flashing HDZero VTX firmware via a CH341A USB SPI programmer."
 readme = "README.md"
 license = { file = "LICENSE" }

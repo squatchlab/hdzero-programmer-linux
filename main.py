@@ -42,7 +42,7 @@ from udev_check import (
 # Hard-coded so AppImage runs (which graft source into site-packages
 # without dist-info) can still report a version. Kept in sync with
 # pyproject.toml by tests/test_version_consistency.py.
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 APP_TITLE = "HDZero Programmer Tool – by Gunther_FPV"
 APP_HEADER_TITLE = "HDZero Programmer (Linux)"
