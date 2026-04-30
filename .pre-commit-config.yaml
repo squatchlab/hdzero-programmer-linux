@@ -1,0 +1,19 @@
+# Run `pip install --user pre-commit && pre-commit install` once after
+# cloning. Hooks then run on every `git commit` against the staged diff.
+#
+# CI (.forgejo/workflows/ci.yml) re-runs `ruff check .` against the full
+# tree, so a missed pre-commit hook still gets caught — pre-commit is the
+# fast feedback loop, not the gate.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.7
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+        # Stage 1: don't reformat the existing macOS-fork code style en masse.
+        # ruff-format runs in --check mode only, so a developer who chooses to
+        # reformat their own new files gets the autofix on save, but legacy
+        # files don't churn unprompted. Drop --check once the codebase is
+        # fully formatted (or sooner if you want the bulk reformat).
+        args: [--check]
