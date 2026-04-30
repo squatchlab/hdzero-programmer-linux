@@ -168,6 +168,23 @@ See `CLAUDE.md` for deeper architecture notes.
 
 Requires a registered Forgejo Actions runner labeled `ubuntu-22.04`.
 
+## Releases
+
+Pushing a `v*` tag triggers `.forgejo/workflows/release.yml`, which builds
+the AppImage, generates `SHA256SUMS`, creates a Forgejo release, and
+uploads both files as release assets:
+
+```bash
+git tag -a v0.2.0 -m "v0.2.0"
+git push origin v0.2.0
+```
+
+Verify a downloaded AppImage:
+
+```bash
+sha256sum -c SHA256SUMS
+```
+
 ## License
 
 MIT — see [`LICENSE`](LICENSE). Copyright remains with the original
