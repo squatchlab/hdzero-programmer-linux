@@ -87,9 +87,12 @@ cp "$REPO_ROOT"/*.png "$INJECT_ABS/"
 # README is loaded at runtime by HelpPanel (tries Readme.md, README.md, Readme,md)
 cp "$REPO_ROOT/README.md" "$INJECT_ABS/README.md"
 
-# MIT LICENSE bundled alongside the source so a redistributed AppImage
-# carries upstream attribution per its terms.
+# MIT LICENSE + LICENSE-NOTES.md bundled alongside the source so a
+# redistributed AppImage carries upstream attribution AND the PyQt6/GPL-v3
+# redistribution position per their respective terms.
 cp "$REPO_ROOT/LICENSE" "$INJECT_ABS/LICENSE"
+[ -f "$REPO_ROOT/LICENSE-NOTES.md" ] && \
+    cp "$REPO_ROOT/LICENSE-NOTES.md" "$INJECT_ABS/LICENSE-NOTES.md"
 
 # udev rule + install helper — udev_check.bundled_rule_path() resolves the
 # rule via resource_path() so the in-app banner can show a working

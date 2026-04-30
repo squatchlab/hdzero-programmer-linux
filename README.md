@@ -210,9 +210,14 @@ sha256sum -c SHA256SUMS
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE). Copyright remains with the original
-author Gunther Votteler (2025); this Linux port preserves the upstream
-license per its terms.
+MIT — see [`LICENSE`](LICENSE). Copyright remains with the original author
+Gunther Votteler (2025); the Linux port preserves the upstream license per
+its terms and adds a fork copyright line for contributions made under it.
+
+The AppImage build bundles PyQt6 (GPL-v3) and is therefore distributed under
+GPL-v3 terms even though the source itself is MIT. See
+[`LICENSE-NOTES.md`](LICENSE-NOTES.md) for the full source-vs-binary breakdown
+and redistribution notes.
 
 ## Disclaimer
 
