@@ -39,7 +39,7 @@ def resource_path(relpath: str) -> str:
     base = getattr(__import__('sys').modules['__main__'], "_MEIPASS", Path(__file__).parent)
     return str(Path(base) / relpath)
 
-# Workers HTTP locales al panel Internet
+# HTTP workers local to the Internet panel
 class LoadDevicesWorker(QThread):
     ok = pyqtSignal(list); fail = pyqtSignal(str)
     def run(self):
@@ -106,9 +106,9 @@ class DownloadFirmwareWorker(QThread):
             self.fail.emit(str(e))
 
 class InternetPanel(QWidget):
-    firmwareSelected = pyqtSignal(str)        # path local descargado (lo ve Local)
-    log = pyqtSignal(str)                     # logs hacia Local
-    flashRequested = pyqtSignal(str, bool)    # (path local, autobackup)
+    firmwareSelected = pyqtSignal(str)        # local downloaded path (consumed by Local panel)
+    log = pyqtSignal(str)                     # log lines forwarded to Local panel
+    flashRequested = pyqtSignal(str, bool)    # (local path, autobackup)
 
     def __init__(self):
         super().__init__()
@@ -127,7 +127,7 @@ class InternetPanel(QWidget):
         row = QHBoxLayout()
         row.setSpacing(12)
 
-        # --- Columna IZQUIERDA
+        # --- LEFT column
         left_col = QVBoxLayout()
         left_col.setSpacing(8)
 
@@ -164,7 +164,7 @@ class InternetPanel(QWidget):
         left_panel.setLayout(left_col)
         left_panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        # --- Columna DERECHA
+        # --- RIGHT column
         right_col = QVBoxLayout()
         right_col.setSpacing(8)
 
@@ -231,7 +231,7 @@ class InternetPanel(QWidget):
     def set_phase(self, text: str):
         self.lbl_phase.setText(text)
 
-    # ===== Helpers de estado =====
+    # ===== Status helpers =====
     def status_append(self, text: str):
         self.status_box.moveCursor(QTextCursor.MoveOperation.End)
         self.status_box.insertPlainText(text if text.endswith("\n") else text + "\n")
@@ -355,7 +355,7 @@ class InternetPanel(QWidget):
         fw = self.cb_fw.currentData()
         self.notes.setPlainText("" if not fw else (fw.get("notes") or ""))
 
-    # ===== Descargar y pedir flash =====
+    # ===== Download and request flash =====
     def download_selected_fw(self):
         fw = self.cb_fw.currentData()
         if not fw:

@@ -146,7 +146,7 @@ class HelpPanel(QWidget):
         super().__init__()
         layout = QVBoxLayout(self); layout.setContentsMargins(10,10,10,10); layout.setSpacing(10)
 
-        # Cargar README
+        # Load README
         readme_text = "README not found."
         for p in ("README.md", "Readme.md"):
             rp = resource_path(p)
@@ -179,7 +179,7 @@ class MainWindow(QWidget):
         self.flashrom = find_flashrom() or ""
         self.fw_path: Optional[Path] = None
 
-        # Estilo oscuro + tabs gris
+        # Dark style + gray tabs
         self.setStyleSheet("""
             QWidget { background: #000; color: #fff; }
             QTabWidget::pane { border: 1px solid #2a2a2a; background: #1a1a1a; }
@@ -218,17 +218,17 @@ class MainWindow(QWidget):
             QTabBar::tab:selected { background:#333333; }
         """)
 
-        # Instancias de paneles
+        # Panel instances
         self.panel_internet = InternetPanel()
         self.panel_local = LocalPanel(start_backup_cb=self.start_backup, start_flash_cb=self.start_flash)
         self.panel_help = HelpPanel()
 
-        # Conexiones entre paneles
+        # Cross-panel connections
         self.panel_internet.firmwareSelected.connect(self.on_fw_downloaded_set_local)
         self.panel_internet.log.connect(self.panel_local.append_log)
         self.panel_internet.flashRequested.connect(self.start_flash)  # (path, autobackup)
 
-        # Tabs con íconos
+        # Tabs with icons
         icon_internet = QIcon(resource_path("internet.png")) if Path(resource_path("internet.png")).exists() else QIcon()
         icon_pc       = QIcon(resource_path("pc.png"))       if Path(resource_path("pc.png")).exists()       else QIcon()
         icon_info     = QIcon(resource_path("info.png"))     if Path(resource_path("info.png")).exists()     else QIcon()
@@ -363,7 +363,7 @@ class MainWindow(QWidget):
         )
         return reply == QMessageBox.StandardButton.Yes
 
-    # ==== Handlers de alto nivel (reutilizados por ambos tabs) ====
+    # ==== High-level handlers (reused by both tabs) ====
     def on_fw_downloaded_set_local(self, path: str):
         self.fw_path = Path(path)
         self.panel_local.set_fw_path(path)
