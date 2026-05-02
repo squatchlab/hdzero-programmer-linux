@@ -532,6 +532,11 @@ def _install_excepthook() -> None:
         exc: BaseException,
         tb: Optional[TracebackType],
     ) -> None:
+        if issubclass(exc_type, KeyboardInterrupt):
+            # Deliberate quit (Ctrl-C). Not a crash — skip the dialog and
+            # let the event loop unwind cleanly.
+            QApplication.quit()
+            return
         if in_hook[0]:
             original(exc_type, exc, tb)
             return

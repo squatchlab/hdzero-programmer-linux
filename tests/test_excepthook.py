@@ -46,6 +46,36 @@ def test_excepthook_pops_dialog_and_writes_stderr(monkeypatch, capsys):
         sys.excepthook = sys.__excepthook__
 
 
+def test_excepthook_keyboardinterrupt_quits_without_dialog(monkeypatch, capsys):
+    """Ctrl-C on the terminal must quit cleanly, not pop the crash dialog."""
+    dialog_calls = []
+    quit_calls = []
+
+    def fake_critical(parent, title, text):
+        dialog_calls.append((title, text))
+
+    def fake_quit():
+        quit_calls.append(True)
+
+    from PyQt6 import QtWidgets
+    monkeypatch.setattr(QtWidgets.QMessageBox, "critical", fake_critical)
+    monkeypatch.setattr(QtWidgets.QApplication, "quit", staticmethod(fake_quit))
+
+    main._install_excepthook()
+    try:
+        try:
+            raise KeyboardInterrupt()
+        except KeyboardInterrupt:
+            et, e, tb = sys.exc_info()
+        sys.excepthook(et, e, tb)
+
+        assert dialog_calls == [], "crash dialog must not pop on Ctrl-C"
+        assert quit_calls == [True], "QApplication.quit() must be called"
+        assert capsys.readouterr().err == ""
+    finally:
+        sys.excepthook = sys.__excepthook__
+
+
 def test_excepthook_reentrancy_falls_back(monkeypatch):
     """If the hook is invoked while already running (e.g. its own
     QMessageBox somehow re-enters), the second call must not loop."""
