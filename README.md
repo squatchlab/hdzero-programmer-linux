@@ -284,3 +284,9 @@ Found something security-relevant? Please report it privately per
 
 Flashing firmware can brick hardware. Always **BACKUP** before **FLASH**.
 Use at your own risk.
+
+---
+
+Built and maintained by **[SquatchLab](https://squatchlab.com)** — books,
+training, and tools for FPV builders. Original macOS tool by Gunther
+Votteler (see [Credits](#credits)).
