@@ -27,15 +27,20 @@ Gunther. This fork only adapts it for Linux.
 
 ## Requirements (Linux)
 
-- Python 3.10+
-- PyQt6 (`pip install PyQt6`)
-- `requests` (`pip install requests`)
+- Python 3.10+ (3.12 recommended; 3.14 works but PyQt6 wheels lag).
+- PyQt6 + `requests` — installed via `pip` into a venv (see Option B).
 - `flashrom` (`sudo apt install flashrom` / `sudo dnf install flashrom` /
-  `sudo pacman -S flashrom`)
+  `sudo pacman -S flashrom`).
+- `xcb-util-cursor` / `libxcb-cursor0` — required by Qt 6.5+ at runtime
+  (`sudo dnf install xcb-util-cursor` / `sudo apt install libxcb-cursor0`).
 - A CH341A USB SPI programmer + a wired connection to the HDZero VTX's
-  W25Q80 flash chip
+  W25Q80 flash chip.
+- A graphical session (Wayland or X). Headless boxes need to be reached
+  via Moonlight/Sunshine, RDP, VNC, or `ssh -X` from a host with a display
+  before launching the GUI — `XDG_SESSION_TYPE=tty` will fail with
+  `qt.qpa.xcb: could not connect to display`.
 - A polkit agent (for the `pkexec` GUI password prompt) — present by default
-  on most desktop distros
+  on most desktop distros. Skippable via the udev rule below.
 
 ## Run
 
@@ -57,17 +62,31 @@ CH341A access setup below (udev rule or polkit agent).
 
 ### Option B — From source
 
+Use a virtualenv. Modern distros (Fedora, Debian 12+, Arch) ship Python
+as an externally-managed environment per PEP 668, so `pip install --user`
+fails with `error: externally-managed-environment`. A venv sidesteps that
+and keeps the install out of the system Python.
+
 ```bash
-pip install --user .
+git clone https://forgejo.squatch.lab/bmags/hdzero-programmer-linux.git
+cd hdzero-programmer-linux
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
 hdzero-programmer
 ```
 
-Or run directly out of a checkout without installing:
+Or run directly without installing the entry point:
 
 ```bash
-pip install --user PyQt6 requests
+python3 -m venv .venv
+source .venv/bin/activate
+pip install PyQt6 requests
 python3 main.py
 ```
+
+For development (tests, lint), use the `[dev]` extra — see
+[Development](#development).
 
 ### Override the firmware index API base
 
@@ -216,10 +235,13 @@ Requires a registered Forgejo Actions runner labeled `ubuntu-22.04`.
 ## Development
 
 ```bash
-pip install --user -e ".[dev]"   # pytest + ruff
-pip install --user pre-commit && pre-commit install
-pytest                           # 64 tests, mostly hardware-mock
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"          # pytest + ruff + mypy
+pip install pre-commit && pre-commit install
+pytest                           # hardware-mock suite, headless under QT_QPA_PLATFORM=offscreen
 ruff check .                     # lint
+mypy .                           # type-check (strict on safety-critical modules)
 ```
 
 `.pre-commit-config.yaml` runs `ruff` on every commit. CI re-runs the
