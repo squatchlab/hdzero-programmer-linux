@@ -5,7 +5,7 @@ import shlex
 import subprocess
 import tempfile
 import time
-from typing import Callable, List, Optional
+from typing import Callable
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
@@ -33,7 +33,7 @@ NO_ESCALATE_TOOL_MSG = (
 )
 
 
-def find_flashrom() -> Optional[str]:
+def find_flashrom() -> str | None:
     for p in FLASHROM_PATHS:
         if os.path.isfile(p) and os.access(p, os.X_OK):
             return p
@@ -41,7 +41,7 @@ def find_flashrom() -> Optional[str]:
     return which("flashrom")
 
 
-def _build_admin_argv(cmd: str) -> Optional[List[str]]:
+def _build_admin_argv(cmd: str) -> list[str] | None:
     """Return the argv that runs `cmd` with elevated privileges, or None if no
     escalation tool is available. pkexec is preferred (polkit GUI prompt);
     SUDO_ASKPASS-driven `sudo -A` is next; finally non-interactive `sudo -n`.
@@ -183,7 +183,7 @@ class FlashWorker(QThread):
     ok       = pyqtSignal()
     fail     = pyqtSignal(str)
 
-    def __init__(self, flashrom_path: str, fw_path: str, backup_path: Optional[str] = None,
+    def __init__(self, flashrom_path: str, fw_path: str, backup_path: str | None = None,
                  cleanup_fw: bool = False):
         super().__init__()
         self.flashrom = flashrom_path
@@ -198,7 +198,7 @@ class FlashWorker(QThread):
         self.cleanup_fw = cleanup_fw
 
     def run(self) -> None:
-        padded: Optional[str] = None
+        padded: str | None = None
         try:
             self.status.emit("Wait - Prepare firmware")
             self.progress.emit(5)
@@ -216,7 +216,7 @@ class FlashWorker(QThread):
             # backup -> write -> verify.
             flashrom_q = shlex.quote(self.flashrom)
             padded_q = shlex.quote(padded)
-            parts: List[str] = []
+            parts: list[str] = []
             if self.backup_path:
                 parts.append(
                     f"{flashrom_q} -p ch341a_spi -r {shlex.quote(self.backup_path)}"

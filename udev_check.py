@@ -9,14 +9,13 @@ the friendlier path.
 """
 import os
 from pathlib import Path
-from typing import List
 
 CH341A_VENDOR = "1a86"
 CH341A_PRODUCT = "5512"
 RULE_FILENAME = "99-ch341a.rules"
 
 # Both system rule dirs udev consults. /etc takes precedence per udev docs.
-RULE_DIRS: List[str] = [
+RULE_DIRS: list[str] = [
     "/etc/udev/rules.d",
     "/usr/lib/udev/rules.d",
     "/run/udev/rules.d",

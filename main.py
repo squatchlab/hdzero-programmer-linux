@@ -4,10 +4,9 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import IO, Callable, Optional
+from typing import IO, Callable
 
-from PyQt6 import QtCore
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QIcon, QPixmap, QTextCursor
 from PyQt6.QtWidgets import (
     QApplication,
@@ -54,6 +53,14 @@ FLASHROM_INSTALL_HINT = (
     "  Arch:          sudo pacman -S flashrom\n"
 )
 
+
+def _load_icon(relpath: str) -> QIcon:
+    """Load a bundled icon, or an empty QIcon if the asset is absent
+    (e.g. a stripped install). Centralises the resolve-then-exists dance
+    the tabs and buttons all repeat."""
+    p = resource_path(relpath)
+    return QIcon(p) if Path(p).exists() else QIcon()
+
 class LocalPanel(QWidget):
     def __init__(
         self,
@@ -64,7 +71,7 @@ class LocalPanel(QWidget):
         self.start_backup_cb = start_backup_cb
         self.start_flash_cb = start_flash_cb
         self.flashrom = find_flashrom() or ""
-        self.fw_path: Optional[Path] = None
+        self.fw_path: Path | None = None
 
         layout = QVBoxLayout(self); layout.setContentsMargins(10,10,10,10); layout.setSpacing(10)
 
@@ -88,17 +95,17 @@ class LocalPanel(QWidget):
         layout.addWidget(self.cb_autobackup)
 
         bottom = QHBoxLayout()
-        backup_icon = QIcon(resource_path("backup.png")) if Path(resource_path("backup.png")).exists() else QIcon()
-        flash_icon  = QIcon(resource_path("flash.png"))  if Path(resource_path("flash.png")).exists()  else QIcon()
+        backup_icon = _load_icon("backup.png")
+        flash_icon  = _load_icon("flash.png")
 
         self.btn_backup = QPushButton("BACKUP")
-        if not backup_icon.isNull(): self.btn_backup.setIcon(backup_icon); self.btn_backup.setIconSize(QtCore.QSize(22, 22))
+        if not backup_icon.isNull(): self.btn_backup.setIcon(backup_icon); self.btn_backup.setIconSize(QSize(22, 22))
         self.btn_backup.setStyleSheet("font-size:16px; font-weight:600; height:36px;")
         self.btn_backup.clicked.connect(self.on_backup_pressed)
         bottom.addWidget(self.btn_backup)
 
         self.flash_btn = QPushButton("FLASH")
-        if not flash_icon.isNull(): self.flash_btn.setIcon(flash_icon); self.flash_btn.setIconSize(QtCore.QSize(22, 22))
+        if not flash_icon.isNull(): self.flash_btn.setIcon(flash_icon); self.flash_btn.setIconSize(QSize(22, 22))
         self.flash_btn.setStyleSheet("font-size:16px; font-weight:600; height:36px;")
         self.flash_btn.clicked.connect(self.on_flash_pressed)
         bottom.addWidget(self.flash_btn)
@@ -125,7 +132,7 @@ class LocalPanel(QWidget):
         if not path: return
         if not path.lower().endswith(".bin"):
             QMessageBox.critical(self, "Error", "Please select a valid .bin file."); return
-        size = os.path.getsize(path)
+        size = Path(path).stat().st_size
         if size > HDZERO_MAX:
             QMessageBox.critical(self, "Error", "Firmware > 64KB; not valid for HDZero."); return
         self.set_fw_path(path); self.status.setText("Ready to flash.")
@@ -176,12 +183,12 @@ class MainWindow(QWidget):
         self.setMinimumSize(680, 600)
 
         self.flashrom = find_flashrom() or ""
-        self.fw_path: Optional[Path] = None
+        self.fw_path: Path | None = None
         # Per-flash transcript handle. Set by _open_flash_log on flash
         # start, cleared by _close_flash_log on completion. Optional
         # because the open path degrades silently on OSError.
-        self._flash_log_path: Optional[Path] = None
-        self._flash_log_fh: Optional[IO[str]] = None
+        self._flash_log_path: Path | None = None
+        self._flash_log_fh: IO[str] | None = None
 
         # Dark style + gray tabs
         self.setStyleSheet("""
@@ -238,9 +245,9 @@ class MainWindow(QWidget):
         )
 
         # Tabs with icons
-        icon_internet = QIcon(resource_path("internet.png")) if Path(resource_path("internet.png")).exists() else QIcon()
-        icon_pc       = QIcon(resource_path("pc.png"))       if Path(resource_path("pc.png")).exists()       else QIcon()
-        icon_info     = QIcon(resource_path("info.png"))     if Path(resource_path("info.png")).exists()     else QIcon()
+        icon_internet = _load_icon("internet.png")
+        icon_pc       = _load_icon("pc.png")
+        icon_info     = _load_icon("info.png")
 
         self.tabs.addTab(self.panel_internet, icon_internet, "Internet")
         self.tabs.addTab(self.panel_local, icon_pc, "Local")
@@ -329,14 +336,14 @@ class MainWindow(QWidget):
             self.panel_local.append_log(f"(flash log disabled: {e})\n")
 
     def _flash_log_write(self, text: str) -> None:
-        fh = getattr(self, "_flash_log_fh", None)
+        fh = self._flash_log_fh
         if fh is None:
             return
         fh.write(text if text.endswith("\n") else text + "\n")
 
     def _close_flash_log(self, summary: str) -> None:
-        fh = getattr(self, "_flash_log_fh", None)
-        path = getattr(self, "_flash_log_path", None)
+        fh = self._flash_log_fh
+        path = self._flash_log_path
         if fh is None:
             return
         try:
@@ -379,7 +386,7 @@ class MainWindow(QWidget):
         self.panel_local.append_log(f"Downloaded from Internet → {path}\n")
 
     def start_backup(self) -> None:
-        if not self.flashrom or not os.path.exists(self.flashrom):
+        if not self.flashrom or not Path(self.flashrom).exists():
             QMessageBox.critical(self, "Error", FLASHROM_INSTALL_HINT)
             return
         if not self._confirm_ch341a_present():
@@ -429,7 +436,7 @@ class MainWindow(QWidget):
         if not fw_path or not Path(fw_path).exists():
             QMessageBox.critical(self, "Error", "Select a .bin file.")
             return
-        if not self.flashrom or not os.path.exists(self.flashrom):
+        if not self.flashrom or not Path(self.flashrom).exists():
             QMessageBox.critical(self, "Error", FLASHROM_INSTALL_HINT)
             return
         if not self._confirm_ch341a_present():
@@ -441,7 +448,7 @@ class MainWindow(QWidget):
         self.panel_local.pb.setValue(0)
         self.panel_local.status.setText("Flashing…")
 
-        backup_path: Optional[str] = None
+        backup_path: str | None = None
         if autobackup:
             ts = time.strftime("%Y%m%d-%H%M%S")
             bdir = backup_dir()
@@ -530,7 +537,7 @@ def _install_excepthook() -> None:
     def hook(
         exc_type: type[BaseException],
         exc: BaseException,
-        tb: Optional[TracebackType],
+        tb: TracebackType | None,
     ) -> None:
         if issubclass(exc_type, KeyboardInterrupt):
             # Deliberate quit (Ctrl-C). Not a crash — skip the dialog and
@@ -580,7 +587,7 @@ def _run_check_rule() -> int:
     return 0 if (installed or no_escalate) else 1
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = _build_argparser()
     # argparse splits its own flags off; everything else is forwarded to
     # QApplication so platform plugin args (-style, -platform, …) still work.

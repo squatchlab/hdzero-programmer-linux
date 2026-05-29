@@ -1,7 +1,6 @@
 # internet_panel.py
 import json
 import os
-import sys
 import tempfile
 import time
 from pathlib import Path
@@ -36,15 +35,13 @@ _HTTP_FAILURES = (RequestException, json.JSONDecodeError, OSError)
 API_BASE = os.environ.get("HDZERO_API_BASE", "https://hdzero.go-next.co").rstrip("/")
 
 def resource_path(relpath: str) -> str:
-    # AppImage build sets HDZERO_APP_DIR to the bundled source/asset dir.
-    # PyInstaller frozen builds expose sys._MEIPASS. Otherwise fall back to
-    # the directory of this file (works for pip-installed flat modules and
-    # plain checkouts).
+    # Two real layouts: the AppImage build sets HDZERO_APP_DIR to the
+    # bundled source/asset dir; everything else (pip install, plain
+    # checkout) resolves relative to this file.
     env_dir = os.environ.get("HDZERO_APP_DIR")
     if env_dir:
         return str(Path(env_dir) / relpath)
-    base = getattr(sys.modules["__main__"], "_MEIPASS", Path(__file__).parent)
-    return str(Path(base) / relpath)
+    return str(Path(__file__).parent / relpath)
 
 # Generic HTTP worker for InternetPanel — single QThread shape with hooks
 # for response shape (raw bytes, JSON parser, streamed-to-tempfile). All
