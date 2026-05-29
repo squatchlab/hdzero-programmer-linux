@@ -6,7 +6,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No changes on `main` since `v0.3.0` yet.
+Post-`v0.3.0` audit-remediation batch (workflow-driven review of the six
+modules, docs, CI, and tests). No version bump yet.
+
+### Added
+- `tests/test_error_paths.py`: coverage for previously-untested defensive
+  paths — `run_admin_streaming` no-escalation-tool (127) + non-UTF-8 decode
+  + SIGKILL-after-SIGTERM, and `FlashWorker` padded-image cleanup `OSError`.
+  (#90)
+- Tests for the excepthook `state_dir()` / `QMessageBox` fallbacks and the
+  backup-dir `mkdir` `OSError` handlers in `start_backup` / `start_flash`.
+  (#82)
+- `_SIGTERM_GRACE_SECS` constant in `flash_ops` (named so the SIGKILL test
+  can shrink it). (#90)
+
+### Changed
+- `_build_admin_argv` docstring now states the `shlex.quote()` caller
+  contract (the function applies no escaping; unquoted input is a
+  shell-injection surface). (#80)
+- PyQt6 dependency ceiling `<6.9` → `<7`; `build-appimage.sh` requirements
+  gain matching `<7` / `<3` bounds so the AppImage resolves the same wheel
+  range as a source install. (#85)
+- Removed the dead PyInstaller `_MEIPASS` branch from
+  `internet_panel.resource_path` (AppImage-only build); dropped the now-unused
+  `import sys`. (#88)
+- `main.py` tidy: `_load_icon()` helper for the repeated icon-load pattern,
+  direct `QSize` import, `os.path` → `pathlib`, dropped needless `getattr`
+  in the flash-log helpers. (#89)
+- PEP 585/604 type hints across `flash_ops`, `main`, `udev_check`,
+  `app_logging` (`Tuple[Path, IO[str]]` → `tuple[Path, TextIO]`),
+  `app_settings`. (#92)
+- `_no_escalate` test fixture is no longer `autouse` — requested explicitly
+  so a future test can exercise a real escalation path. (#91)
+- conftest `qt_app` upgraded from `QCoreApplication` to a headless offscreen
+  `QApplication` so widget-level tests can construct `MainWindow`. (#82)
+- Removal-criteria note added to the legacy `QSettings` migration shim. (#86)
+- CI tool pins refreshed: ruff-pre-commit `v0.5.7` → `v0.15.15`, gitleaks
+  `v8.18.4` → `v8.30.1` (pre-commit + `ci.yml`), `actions/checkout` v4 → v6.
+  `actions/upload-artifact` kept at v3 with a do-not-bump guard comment;
+  `actions/setup-python` kept at v5 with the v6 blocker documented. (#83, #84)
+- Doc drift: dropped the stale "when SECURITY.md lands per #23" conditional
+  from `CONTRIBUTING.md` / `LICENSE-NOTES.md`; corrected the
+  `build-appimage.sh` README-fallback comment; `CLAUDE.md` now describes the
+  unified `HttpWorker` and the two-path `resource_path`. (#87)
+
+### Fixed
+- `HttpWorker._stream_download` no longer crashes on a non-numeric
+  `Content-Length` header (`ValueError` escaped the worker's failure
+  handler); falls back to unknown-size streaming. (#81)
 
 ## [0.3.0] - 2026-04-30
 
