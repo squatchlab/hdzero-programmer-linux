@@ -24,7 +24,9 @@ were closed in the post-audit batch — see `docs/HARDWARE-CI.md` and
 - `main.py` — `MainWindow` owns the three tabs and routes flash signals.
   Holds `FlashWorker` / `BackupWorker` references on `self.worker` /
   `self.bkw` so QThreads stay alive.
-- `internet_panel.py` — `InternetPanel` + four HTTP `QThread` workers
+- `internet_panel.py` — `InternetPanel` + a unified `HttpWorker` `QThread`
+  (one parameterized worker for the LoadDevices / LoadFirmwares / LoadImage
+  / DownloadFirmware roles — collapsed from four near-duplicates in #25)
   hitting `HDZERO_API_BASE` (default `https://hdzero.go-next.co`).
   Endpoints `/api/devices`, `/api/firmwares/{id}`. Selecting a firmware
   downloads to a temp `.bin` then emits `flashRequested(path, autobackup)`.
