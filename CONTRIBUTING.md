@@ -17,8 +17,7 @@ using the **Bug report** template. Please include:
 - For UI-related bugs, the output of running with `QT_LOGGING_RULES="*=true"`
 
 **For security issues, do NOT file a public issue.** See
-[`SECURITY.md`](SECURITY.md) for the disclosure path (when that file
-lands per ticket #23 — until then, email the maintainer directly).
+[`SECURITY.md`](SECURITY.md) for the disclosure path.
 
 ## Proposing changes
 

@@ -32,9 +32,11 @@ rm -rf "$BUILD_DIR"
 mkdir -p "$RECIPE_DIR" "$DIST_DIR"
 
 # --- recipe: deps only. Application source is grafted in post-build.
+# Bounds mirror pyproject.toml [project.dependencies] so the AppImage
+# resolves the same wheel range as a source install.
 cat > "$RECIPE_DIR/requirements.txt" <<EOF
-PyQt6>=6.6
-requests>=2.31
+PyQt6>=6.6,<7
+requests>=2.31,<3
 EOF
 
 # --- entrypoint shell script: invoked as AppRun. Locates the injected
@@ -85,7 +87,7 @@ cp "$REPO_ROOT/app_settings.py"   "$INJECT_ABS/"
 # Image assets used by HelpPanel, LocalPanel, InternetPanel, MainWindow
 cp "$REPO_ROOT"/*.png "$INJECT_ABS/"
 
-# README is loaded at runtime by HelpPanel (tries Readme.md, README.md, Readme,md)
+# README is loaded at runtime by HelpPanel (tries README.md, then Readme.md)
 cp "$REPO_ROOT/README.md" "$INJECT_ABS/README.md"
 
 # MIT LICENSE + LICENSE-NOTES.md bundled alongside the source so a
