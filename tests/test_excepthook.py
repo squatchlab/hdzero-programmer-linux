@@ -107,3 +107,74 @@ def test_excepthook_reentrancy_falls_back(monkeypatch):
         sys.excepthook(et, e, tb)
     finally:
         sys.excepthook = sys.__excepthook__
+
+
+def test_excepthook_state_dir_failure_still_pops_dialog(monkeypatch, capsys):
+    """#82: if state_dir() raises while building the transcript hint, the
+    crash dialog must still appear — just without the hint line. Covers the
+    last-resort `except Exception` around the state_dir() import (main.py:553)."""
+    captured = []
+
+    def fake_critical(parent, title, text):
+        captured.append((title, text))
+
+    def boom_state_dir():
+        raise RuntimeError("state_dir exploded")
+
+    from PyQt6 import QtWidgets
+
+    import app_logging
+    monkeypatch.setattr(QtWidgets.QMessageBox, "critical", fake_critical)
+    # The hook does `from app_logging import state_dir` at call time, so
+    # patching the attribute on the module is what the import resolves to.
+    monkeypatch.setattr(app_logging, "state_dir", boom_state_dir)
+
+    main._install_excepthook()
+    try:
+        et, e, tb = _fabricated_traceback()
+        sys.excepthook(et, e, tb)
+
+        # Dialog still popped exactly once with the traceback...
+        assert len(captured) == 1
+        title, text = captured[0]
+        assert title == "HDZero Programmer crashed"
+        assert "RuntimeError: boom" in text
+        # ...but the transcript-dir hint was swallowed, so it is absent.
+        assert "transcripts" not in text
+        # stderr still got the traceback regardless.
+        assert "RuntimeError: boom" in capsys.readouterr().err
+    finally:
+        sys.excepthook = sys.__excepthook__
+
+
+def test_excepthook_messagebox_failure_falls_back_to_original(monkeypatch, capsys):
+    """#82: if QMessageBox.critical itself raises (Qt wedged), the hook must
+    fall back to the original excepthook rather than vanish. Covers the
+    last-resort `except Exception` around the dialog (main.py:564)."""
+    fallback_calls = []
+
+    def fake_original(exc_type, exc, tb):
+        fallback_calls.append((exc_type, exc, tb))
+
+    def wedged_critical(parent, title, text):
+        raise RuntimeError("Qt is wedged")
+
+    from PyQt6 import QtWidgets
+
+    monkeypatch.setattr(QtWidgets.QMessageBox, "critical", wedged_critical)
+    # Install our sentinel as the *current* excepthook so the hook captures
+    # it as `original` when _install_excepthook runs.
+    monkeypatch.setattr(sys, "excepthook", fake_original)
+
+    main._install_excepthook()
+    try:
+        et, e, tb = _fabricated_traceback()
+        sys.excepthook(et, e, tb)
+
+        # Dialog raised → fell back to the original handler exactly once.
+        assert len(fallback_calls) == 1
+        assert fallback_calls[0][0] is RuntimeError
+        # stderr still carried the traceback before the dialog was attempted.
+        assert "RuntimeError: boom" in capsys.readouterr().err
+    finally:
+        sys.excepthook = sys.__excepthook__
