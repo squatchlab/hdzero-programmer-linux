@@ -89,8 +89,8 @@ in `MainWindow`. Do not call `flash_ops` from panels directly.
   pops a Yes/No dialog (default No) when no device is enumerated. Bypass
   with `HDZERO_SKIP_CH341A_CHECK=1` (test sandboxes, non-CH341A programmers).
 - **`resource_path()`** lives in `internet_panel.py`. It checks
-  `HDZERO_APP_DIR` (AppImage), then `sys._MEIPASS` (PyInstaller-compat,
-  unused), then the module dir. Reuse for any new bundled asset.
+  `HDZERO_APP_DIR` (AppImage), else falls back to the module dir
+  (pip install / plain checkout). Reuse for any new bundled asset.
 - **README at runtime.** `HelpPanel` tries `README.md` then `Readme.md`
   and renders via `setMarkdown()`. Don't rename without updating the list.
 - **Excepthook.** `main._install_excepthook()` (after `QApplication`

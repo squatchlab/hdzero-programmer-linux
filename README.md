@@ -254,8 +254,8 @@ the AppImage, generates `SHA256SUMS`, creates a Forgejo release, and
 uploads both files as release assets:
 
 ```bash
-git tag -a v0.2.0 -m "v0.2.0"
-git push origin v0.2.0
+git tag -a vX.Y.Z -m "vX.Y.Z"
+git push origin vX.Y.Z
 ```
 
 Verify a downloaded AppImage:
