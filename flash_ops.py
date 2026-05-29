@@ -46,6 +46,11 @@ def _build_admin_argv(cmd: str) -> Optional[List[str]]:
     escalation tool is available. pkexec is preferred (polkit GUI prompt);
     SUDO_ASKPASS-driven `sudo -A` is next; finally non-interactive `sudo -n`.
     Already-root or HDZERO_NO_ESCALATE skips escalation entirely.
+
+    SECURITY: `cmd` is passed verbatim to `/bin/sh -c` with NO escaping
+    applied here. Every path or value interpolated into `cmd` MUST be quoted
+    by the caller via `shlex.quote()` — otherwise this is a shell-injection
+    surface on a privilege-escalated command. See ADR-0001.
     """
     if os.geteuid() == 0 or os.environ.get("HDZERO_NO_ESCALATE"):
         return ["/bin/sh", "-c", cmd]

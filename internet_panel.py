@@ -114,7 +114,13 @@ class HttpWorker(QThread):
     def _stream_download(self) -> None:
         r = requests.get(self.url, stream=True, timeout=self.timeout)
         r.raise_for_status()
-        total = int(r.headers.get("Content-Length") or 0)
+        # Content-Length is advisory: missing, "0", or malformed all mean
+        # "unknown size" — stream without progress %. A non-numeric header
+        # must not crash the download thread (ValueError escapes _HTTP_FAILURES).
+        try:
+            total = int(r.headers.get("Content-Length") or 0)
+        except ValueError:
+            total = 0
         tmp = tempfile.NamedTemporaryFile(prefix="hdzero_dl_", suffix=".bin", delete=False)
         tmp_path = tmp.name
         tmp.close()

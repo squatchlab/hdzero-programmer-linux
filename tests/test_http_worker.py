@@ -122,6 +122,46 @@ def test_stream_to_temp_bin(monkeypatch, tmp_path):
     assert 100 in progress_log
 
 
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {},                              # missing Content-Length
+        {"Content-Length": "0"},         # zero
+        {"Content-Length": "not-a-num"},  # malformed — #81: must not crash
+    ],
+    ids=["missing", "zero", "malformed"],
+)
+def test_stream_tolerates_bad_content_length(monkeypatch, headers):
+    """#81: a missing/zero/non-numeric Content-Length means 'unknown size' —
+    the download streams to completion without crashing the worker thread.
+    The malformed case previously raised ValueError, which escapes
+    _HTTP_FAILURES and would kill the thread with no fail signal."""
+    from pathlib import Path
+
+    from internet_panel import HttpWorker
+
+    payload = b"firmware-bytes" * 10
+
+    def fake_get(url, timeout=None, stream=False):
+        return _FakeResponse(content=payload, headers=headers)
+
+    monkeypatch.setattr("requests.get", fake_get)
+    captured = {}
+    progress_log = []
+    w = HttpWorker("https://example/fw.bin", stream_to_temp_bin=True, retries=0)
+    w.ok.connect(_captured(captured, "ok"))
+    w.fail.connect(_captured(captured, "fail"))
+    w.progress.connect(progress_log.append)
+    w.run()
+
+    out_path = captured.get("ok")
+    assert out_path and Path(out_path).exists()
+    assert Path(out_path).read_bytes() == payload
+    assert "fail" not in captured
+    # Unknown size -> no intermediate %, but the final 100 still fires.
+    assert progress_log[-1] == 100
+
+
 def test_retry_then_success(monkeypatch):
     from internet_panel import HttpWorker
 
