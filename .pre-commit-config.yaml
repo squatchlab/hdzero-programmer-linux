@@ -6,7 +6,7 @@
 # fast feedback loop, not the gate.
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.7
+    rev: v0.15.15
     hooks:
       - id: ruff
         args: [--fix]
@@ -19,7 +19,7 @@ repos:
         args: [--check]
 
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.18.4
+    rev: v8.30.1
     hooks:
       - id: gitleaks
         # Scan staged diff for accidental secrets (API keys, tokens, PEM

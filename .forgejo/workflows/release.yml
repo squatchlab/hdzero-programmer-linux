@@ -9,9 +9,12 @@ jobs:
   publish:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python 3.12
+        # Pinned to v5: setup-python@v6 needs Node 24 / runner >= v2.327.1.
+        # lab01 Forgejo runner compatibility is unverified — bump only after
+        # confirming the runner version (#84).
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -100,6 +103,8 @@ jobs:
           done
 
       - name: Upload AppImage as workflow artifact too
+        # Pinned to v3 deliberately — v4 throws GHESNotSupportedError on the
+        # lab01 Forgejo runner's GHES artifact API (see reverted #27). Do not bump.
         uses: actions/upload-artifact@v3
         with:
           name: HDZeroProgrammer-x86_64.AppImage

@@ -54,7 +54,7 @@ jobs:
       # Where flash transcripts land for the artifact upload.
       HW_TRANSCRIPT_DIR: ${{ github.workspace }}/dist/hw-transcripts
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Pre-flight — confirm hardware is connected
         run: |
@@ -86,6 +86,9 @@ jobs:
           }
 
       - name: Set up Python + install package
+        # Pinned to v5: setup-python@v6 needs Node 24 / runner >= v2.327.1.
+        # lab01 Forgejo runner compatibility is unverified — bump only after
+        # confirming the runner version (#84).
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -153,6 +156,8 @@ jobs:
 
       - name: Upload flashrom transcripts
         if: always()
+        # Pinned to v3 deliberately — v4 throws GHESNotSupportedError on the
+        # lab01 Forgejo runner's GHES artifact API (see reverted #27). Do not bump.
         uses: actions/upload-artifact@v3
         with:
           name: hw-test-transcripts
