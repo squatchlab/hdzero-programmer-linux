@@ -15,7 +15,7 @@ State directory resolution (first hit wins):
 import os
 import time
 from pathlib import Path
-from typing import IO, Tuple
+from typing import TextIO
 
 
 def state_dir() -> Path:
@@ -45,7 +45,7 @@ def backup_dir() -> Path:
     return state_dir() / "backups"
 
 
-def open_flash_log(prefix: str, version: str) -> Tuple[Path, IO[str]]:
+def open_flash_log(prefix: str, version: str) -> tuple[Path, TextIO]:
     """Create a fresh log file under state_dir() and return (path, handle).
 
     `prefix` is one of "flash" / "backup" — drives the filename. The handle

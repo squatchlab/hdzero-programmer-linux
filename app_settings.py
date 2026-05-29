@@ -8,8 +8,6 @@ under the maintainer's domain so the two stores never collide.
 `migrate_settings_once()` copies the legacy keys forward exactly once;
 the legacy file is left intact so a downgrade still finds its data.
 """
-from typing import Optional
-
 from PyQt6.QtCore import QSettings
 
 LEGACY_SETTINGS_ORG = "HDZero"
@@ -31,10 +29,17 @@ def settings() -> QSettings:
 
 
 def migrate_settings_once(
-    new: Optional[QSettings] = None,
-    old: Optional[QSettings] = None,
+    new: QSettings | None = None,
+    old: QSettings | None = None,
 ) -> None:
     """Copy legacy `HDZero/Programmer` keys into the new scope on first run.
+
+    Removal criteria: this shim exists only to carry pre-0.3 (pre-rebrand)
+    settings forward. It can be deleted once pre-0.3 installs are EOL per
+    the support window in SECURITY.md — do not hard-code a version here;
+    check the policy. Until then it is effectively free (the sentinel
+    short-circuits every rerun).
+
 
     Skipped if the sentinel `_migrated_from_legacy_org` is already set in
     the new scope, so reruns are free. Existing keys in the new scope are
