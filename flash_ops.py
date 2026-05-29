@@ -12,6 +12,10 @@ from PyQt6.QtCore import QThread, pyqtSignal
 HDZERO_MAX = 64 * 1024
 FLASH_SIZE_BYTES = 1024 * 1024  # 1 MiB (W25Q80)
 
+# Grace period between SIGTERM and SIGKILL when a wedged flashrom is being
+# torn down. Named (not inlined) so tests can shrink it; see test_error_paths.
+_SIGTERM_GRACE_SECS = 5
+
 FLASHROM_PATHS = [
     # Standard Linux distro packages (apt/dnf/pacman) land in /usr/bin or /usr/sbin.
     "/usr/bin/flashrom",
@@ -113,7 +117,7 @@ def run_admin_streaming(
         line_cb(f"(timeout: {reason}; terminating flashrom)\n")
         proc.terminate()
         try:
-            return proc.wait(timeout=5)
+            return proc.wait(timeout=_SIGTERM_GRACE_SECS)
         except subprocess.TimeoutExpired:
             line_cb("(timeout: SIGTERM ignored, sending SIGKILL)\n")
             proc.kill()

@@ -1,16 +1,14 @@
 """#90: coverage for previously-untested error / edge paths.
 
 A grab-bag of defensive branches that only fire on failure:
-- run_admin_streaming with no escalation tool, and with non-UTF-8 output
+- run_admin_streaming: no escalation tool, non-UTF-8 output, and the
+  SIGKILL-after-SIGTERM timeout fallback
 - FlashWorker's padded-image cleanup when unlink raises
-- HelpPanel's README-load fallback
 
 Stream-download / Content-Length edge cases are covered separately in
-test_http_worker.py (#81). Two #90 items are deferred:
-- SIGKILL-after-SIGTERM in run_admin_streaming — its hard-coded 5s wait
-  makes a fast, non-flaky test awkward without refactoring the code.
-- HelpPanel README-load fallback — needs the GUI QApplication fixture
-  introduced with #82; file once that lands so QWidget construction is safe.
+test_http_worker.py (#81). One #90 item remains deferred: the HelpPanel
+README-load fallback needs the GUI QApplication fixture introduced with
+#82 — file once that lands so QWidget construction is safe.
 """
 import stat
 from pathlib import Path
@@ -67,6 +65,25 @@ def test_run_admin_streaming_non_utf8_output_decodes_to_replacement(
 
     assert rc == 0
     assert "�" in "".join(lines)
+
+
+def test_run_admin_streaming_sigkill_after_sigterm(_no_escalate, monkeypatch):
+    """A wedged process that ignores SIGTERM gets SIGKILLed after the grace
+    period. The grace constant is shrunk so the test stays fast."""
+    import flash_ops
+
+    monkeypatch.setattr(flash_ops, "_SIGTERM_GRACE_SECS", 0.2)
+
+    lines = []
+    # `trap '' TERM` makes the shell ignore SIGTERM; the wall-clock timeout
+    # fires, terminate() is ignored, and the grace wait elapses -> SIGKILL.
+    rc = flash_ops.run_admin_streaming(
+        "trap '' TERM; echo started; sleep 30", lines.append, timeout=0.5
+    )
+
+    blob = "".join(lines)
+    assert "SIGTERM ignored, sending SIGKILL" in blob
+    assert rc < 0  # negative == killed by signal (SIGKILL -> -9)
 
 
 # ---------- FlashWorker cleanup ----------
