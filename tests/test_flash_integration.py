@@ -17,7 +17,10 @@ import pytest
 FIXTURE = Path(__file__).parent / "fixtures" / "fake_flashrom.sh"
 
 
-@pytest.fixture(autouse=True)
+# Not autouse: requested explicitly by each test that drives a worker, so a
+# future test can exercise a real escalation path without fighting a global
+# override. (#91)
+@pytest.fixture
 def _no_escalate(monkeypatch):
     monkeypatch.setenv("HDZERO_NO_ESCALATE", "1")
     monkeypatch.delenv("FAKE_FLASHROM_FAIL", raising=False)
@@ -58,7 +61,7 @@ def _run_worker(qt_app, worker):
 
 # ---------- happy path with backup ----------
 
-def test_safe_flash_with_backup_emits_all_phases(qt_app, fake_flashrom, small_firmware, tmp_path):
+def test_safe_flash_with_backup_emits_all_phases(_no_escalate, qt_app, fake_flashrom, small_firmware, tmp_path):
     from flash_ops import FlashWorker
 
     backup_path = tmp_path / "backup.bin"
@@ -85,7 +88,7 @@ def test_safe_flash_with_backup_emits_all_phases(qt_app, fake_flashrom, small_fi
 
 # ---------- happy path without backup ----------
 
-def test_safe_flash_no_backup_skips_read_phase(qt_app, fake_flashrom, small_firmware):
+def test_safe_flash_no_backup_skips_read_phase(_no_escalate, qt_app, fake_flashrom, small_firmware):
     from flash_ops import FlashWorker
 
     worker = FlashWorker(fake_flashrom, small_firmware, backup_path=None)
@@ -104,7 +107,7 @@ def test_safe_flash_no_backup_skips_read_phase(qt_app, fake_flashrom, small_firm
 
 # ---------- failure injection ----------
 
-def test_safe_flash_write_failure_short_circuits(monkeypatch, qt_app, fake_flashrom, small_firmware, tmp_path):
+def test_safe_flash_write_failure_short_circuits(monkeypatch, _no_escalate, qt_app, fake_flashrom, small_firmware, tmp_path):
     from flash_ops import FlashWorker
 
     monkeypatch.setenv("FAKE_FLASHROM_FAIL", "write")
@@ -122,7 +125,7 @@ def test_safe_flash_write_failure_short_circuits(monkeypatch, qt_app, fake_flash
     assert backup_path.exists()
 
 
-def test_safe_flash_verify_failure_surfaces_in_log(monkeypatch, qt_app, fake_flashrom, small_firmware):
+def test_safe_flash_verify_failure_surfaces_in_log(monkeypatch, _no_escalate, qt_app, fake_flashrom, small_firmware):
     from flash_ops import FlashWorker
 
     monkeypatch.setenv("FAKE_FLASHROM_FAIL", "verify")
@@ -142,7 +145,7 @@ def test_safe_flash_verify_failure_surfaces_in_log(monkeypatch, qt_app, fake_fla
 
 # ---------- backup_path attribute is preserved ----------
 
-def test_flashworker_records_backup_path(qt_app, fake_flashrom, small_firmware):
+def test_flashworker_records_backup_path(_no_escalate, qt_app, fake_flashrom, small_firmware):
     from flash_ops import FlashWorker
 
     worker = FlashWorker(fake_flashrom, small_firmware, backup_path="/tmp/whatever.bin")
@@ -151,7 +154,7 @@ def test_flashworker_records_backup_path(qt_app, fake_flashrom, small_firmware):
 
 # ---------- shell-quoting hardening ----------
 
-def test_safe_flash_handles_path_with_spaces(qt_app, fake_flashrom, small_firmware, tmp_path):
+def test_safe_flash_handles_path_with_spaces(_no_escalate, qt_app, fake_flashrom, small_firmware, tmp_path):
     """Backup path containing a space and a single quote must round-trip
     through the shlex.quote'd `sh -c '... && ...'` chain unscathed.
     """
@@ -172,7 +175,7 @@ def test_safe_flash_handles_path_with_spaces(qt_app, fake_flashrom, small_firmwa
 
 # ---------- tempfile cleanup ----------
 
-def test_flash_unlinks_padded_image_after_success(qt_app, fake_flashrom, small_firmware, tmp_path):
+def test_flash_unlinks_padded_image_after_success(_no_escalate, qt_app, fake_flashrom, small_firmware, tmp_path):
     """The padded-1MiB tempfile is always owned by FlashWorker; it must
     be unlinked on the success path so /tmp doesn't accumulate stale
     1MiB blobs across repeated flashes.
@@ -193,7 +196,7 @@ def test_flash_unlinks_padded_image_after_success(qt_app, fake_flashrom, small_f
     assert leaked_padded == [], f"padded image not unlinked: {leaked_padded}"
 
 
-def test_flash_unlinks_padded_image_after_failure(monkeypatch, qt_app, fake_flashrom, small_firmware):
+def test_flash_unlinks_padded_image_after_failure(monkeypatch, _no_escalate, qt_app, fake_flashrom, small_firmware):
     """Cleanup runs even when the flash fails — the finally clause covers
     both branches.
     """
@@ -211,7 +214,7 @@ def test_flash_unlinks_padded_image_after_failure(monkeypatch, qt_app, fake_flas
     assert leaked_padded == [], f"padded image not unlinked on failure: {leaked_padded}"
 
 
-def test_flash_unlinks_source_fw_when_cleanup_flag_set(qt_app, fake_flashrom, tmp_path):
+def test_flash_unlinks_source_fw_when_cleanup_flag_set(_no_escalate, qt_app, fake_flashrom, tmp_path):
     """When cleanup_fw=True (InternetPanel-download path), the source
     firmware tempfile is unlinked too. LocalPanel's user-selected file
     must NOT be unlinked — separate test below.
@@ -228,7 +231,7 @@ def test_flash_unlinks_source_fw_when_cleanup_flag_set(qt_app, fake_flashrom, tm
     assert not fw.exists(), "source fw should be unlinked when cleanup_fw=True"
 
 
-def test_flash_preserves_source_fw_when_cleanup_flag_unset(qt_app, fake_flashrom, small_firmware):
+def test_flash_preserves_source_fw_when_cleanup_flag_unset(_no_escalate, qt_app, fake_flashrom, small_firmware):
     """The default (cleanup_fw=False) leaves the user's .bin alone. This
     is the LocalPanel path — the firmware is not the worker's to delete.
     """
@@ -243,7 +246,7 @@ def test_flash_preserves_source_fw_when_cleanup_flag_unset(qt_app, fake_flashrom
     assert os.path.exists(small_firmware), "user-selected .bin must not be unlinked"
 
 
-def test_backup_worker_handles_path_with_spaces(qt_app, fake_flashrom, tmp_path):
+def test_backup_worker_handles_path_with_spaces(_no_escalate, qt_app, fake_flashrom, tmp_path):
     from flash_ops import BackupWorker
 
     weird_dir = tmp_path / "weird dir"
