@@ -116,15 +116,12 @@ in `MainWindow`. Do not call `flash_ops` from panels directly.
   before constructing `QApplication`; `parse_known_args` lets Qt's
   platform flags pass through. CI `appimage` job execs both flags as a
   launch smoke test.
-- **Autobackup persistence.** `app_settings.settings()` returns a
-  `QSettings` handle in the reverse-DNS scope `lab.squatch /
-  hdzero-programmer-linux` (file `~/.config/lab.squatch/hdzero-programmer-linux.conf`).
-  Key `autobackup` is shared between Local and Internet panels — last
-  toggle on either becomes the next-launch default.
-  `app_settings.migrate_settings_once()` runs in `main()` after
-  `_install_excepthook()` and copies the legacy `HDZero/Programmer` keys
-  forward exactly once (sentinel `_migrated_from_legacy_org`); the legacy
-  file is left intact so a downgrade still finds its data.
+- **Autobackup persistence.** The `autobackup` QSettings key (scope
+  `lab.squatch / hdzero-programmer-linux`, file
+  `~/.config/lab.squatch/hdzero-programmer-linux.conf`) is **shared** by the
+  Local and Internet panels — the last toggle on either is the next launch's
+  default. The legacy-scope migration (Architecture, `app_settings`) runs in
+  `main()` after `_install_excepthook()`, sentinel-guarded.
 - **Test harness.** `tests/fixtures/fake_flashrom.sh` is a drop-in
   stand-in: emits the same stdout markers `FlashWorker` greps and supports
   `FAKE_FLASHROM_FAIL=read|write|verify`. Integration tests call
