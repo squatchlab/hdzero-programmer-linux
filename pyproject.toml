@@ -30,7 +30,7 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "PyQt6>=6.6,<6.9",
+    "PyQt6>=6.6,<7",
     "requests>=2.31,<3",
 ]
 

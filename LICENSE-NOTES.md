@@ -64,5 +64,4 @@ may rename to a non-brand identifier if the policy is restrictive.
 ## Contact
 
 For license questions about distribution scenarios not covered above,
-see [`SECURITY.md`](SECURITY.md) for the maintainer contact path (when
-that file lands per ticket `#23`).
+see [`SECURITY.md`](SECURITY.md) for the maintainer contact path.
