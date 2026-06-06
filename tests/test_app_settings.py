@@ -71,6 +71,9 @@ def test_migrate_copies_legacy_keys_once(settings_pair):
 
 
 def test_migrate_is_idempotent(settings_pair):
+    """Sentinel branch: `_migrated_from_legacy_org` is already set, so a second
+    migrate must short-circuit on the sentinel and not touch the new scope.
+    """
     import app_settings
 
     new, old, _, _ = settings_pair
@@ -89,6 +92,9 @@ def test_migrate_is_idempotent(settings_pair):
 
 
 def test_migrate_skips_keys_already_in_new_scope(settings_pair):
+    """Per-key branch: no sentinel, but the key already exists in the new
+    scope, so the copy loop must skip it and preserve the user's value.
+    """
     import app_settings
 
     new, old, _, _ = settings_pair
