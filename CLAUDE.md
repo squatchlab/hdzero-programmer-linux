@@ -131,7 +131,8 @@ in `MainWindow`. Do not call `flash_ops` from panels directly.
   ignores are in `pyproject.toml` (legacy upstream style — `E401/E701/
   E702/E501/W293`). `.pre-commit-config.yaml` runs ruff (`--fix`),
   ruff-format (`--check` only, no bulk reformat yet), and `gitleaks` on
-  every commit; CI re-runs ruff + gitleaks as the gate.
+  every commit; CI re-runs ruff + gitleaks as the gate. The pinned
+  ruff/gitleaks versions live in `.pre-commit-config.yaml` (`rev:` fields).
 
 ## CI / release
 
