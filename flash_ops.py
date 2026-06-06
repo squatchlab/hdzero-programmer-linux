@@ -110,7 +110,10 @@ def run_admin_streaming(
         argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, bufsize=1,
     )
-    assert proc.stdout is not None
+    # stdout=PIPE guarantees proc.stdout is set; raise explicitly rather
+    # than assert so the invariant survives `python -O`.
+    if proc.stdout is None:
+        raise RuntimeError("subprocess stdout pipe was not created")
     deadline = time.monotonic() + timeout
 
     def _kill_after_timeout(reason: str) -> int:
@@ -170,6 +173,8 @@ def make_padded_image_1mib(fw_path: str) -> str:
         data = f.read()
     if len(data) > FLASH_SIZE_BYTES:
         raise RuntimeError("Firmware is larger than 1 MiB.")
+    # delete=False: the temp file must outlive this function so flashrom can
+    # read it later in the privileged chain; the caller is responsible for it.
     tmp = tempfile.NamedTemporaryFile(prefix="hdzero_", suffix=".bin", delete=False)
     tmp_path = tmp.name
     tmp.close()
