@@ -34,9 +34,16 @@ mkdir -p "$RECIPE_DIR" "$DIST_DIR"
 # --- recipe: deps only. Application source is grafted in post-build.
 # Bounds mirror pyproject.toml [project.dependencies] so the AppImage
 # resolves the same wheel range as a source install.
+#
+# Use the `~=` compatible-release operator, NOT `>=x,<y+1`: python-appimage
+# feeds each requirement to a shell *unquoted* when it shells out to pip, so a
+# `<` in the specifier (e.g. `PyQt6>=6.6,<7`) is parsed by /bin/sh as an input
+# redirection — `<7` => "redirect stdin from file 7" => the build dies with
+# `RuntimeError: /bin/sh: 1: cannot open 7: No such file` (#108). `~=6.6` means
+# exactly `>=6.6,<7` but contains no shell metacharacter, so it is safe.
 cat > "$RECIPE_DIR/requirements.txt" <<EOF
-PyQt6>=6.6,<7
-requests>=2.31,<3
+PyQt6~=6.6
+requests~=2.31
 EOF
 
 # --- entrypoint shell script: invoked as AppRun. Locates the injected
