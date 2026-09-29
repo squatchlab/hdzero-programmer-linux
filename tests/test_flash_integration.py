@@ -24,6 +24,8 @@ FIXTURE = Path(__file__).parent / "fixtures" / "fake_flashrom.sh"
 def _no_escalate(monkeypatch):
     monkeypatch.setenv("HDZERO_NO_ESCALATE", "1")
     monkeypatch.delenv("FAKE_FLASHROM_FAIL", raising=False)
+    monkeypatch.delenv("FAKE_FLASHROM_MULTI", raising=False)
+    monkeypatch.delenv("FAKE_FLASHROM_ARGLOG", raising=False)
 
 
 @pytest.fixture
@@ -264,3 +266,77 @@ def test_backup_worker_handles_path_with_spaces(_no_escalate, qt_app, fake_flash
     assert oks == [str(out)]
     assert out.exists()
     assert out.stat().st_size == 1024 * 1024
+
+
+# ---------- ambiguous chip definitions (#4) ----------
+
+def _flashrom_calls(arglog):
+    return arglog.read_text().splitlines()
+
+
+def test_safe_flash_passes_chip_when_definitions_ambiguous(
+    _no_escalate, qt_app, fake_flashrom, small_firmware, tmp_path, monkeypatch
+):
+    """flashrom 1.4+ matches W25Q80BV/DV and W25Q80RV for the same chip and
+    refuses to run without -c; every op after the probe must carry it."""
+    from flash_ops import FlashWorker
+
+    arglog = tmp_path / "args.log"
+    monkeypatch.setenv("FAKE_FLASHROM_MULTI", "1")
+    monkeypatch.setenv("FAKE_FLASHROM_ARGLOG", str(arglog))
+
+    backup_path = tmp_path / "backup.bin"
+    worker = FlashWorker(fake_flashrom, small_firmware, backup_path=str(backup_path))
+    result = _run_worker(qt_app, worker)
+
+    assert result["fails"] == []
+    assert result["ok"] == [True]
+    assert backup_path.stat().st_size == 1024 * 1024
+
+    probe, *ops = _flashrom_calls(arglog)
+    assert "-c" not in probe.split()
+    assert len(ops) == 3  # backup, write, verify
+    for op in ops:
+        assert "-c W25Q80BV/W25Q80DV" in op
+    assert "using -c W25Q80BV/W25Q80DV" in "".join(result["logs"])
+
+
+def test_safe_flash_omits_chip_when_single_definition(
+    _no_escalate, qt_app, fake_flashrom, small_firmware, tmp_path, monkeypatch
+):
+    """Older flashrom (single "W25Q80.V" match) must not get a -c flag."""
+    from flash_ops import FlashWorker
+
+    arglog = tmp_path / "args.log"
+    monkeypatch.setenv("FAKE_FLASHROM_ARGLOG", str(arglog))
+
+    worker = FlashWorker(fake_flashrom, small_firmware, backup_path=None)
+    result = _run_worker(qt_app, worker)
+
+    assert result["ok"] == [True]
+    calls = _flashrom_calls(arglog)
+    assert len(calls) == 3  # probe, write, verify
+    assert all("-c" not in c.split() for c in calls)
+
+
+def test_backup_worker_passes_chip_when_definitions_ambiguous(
+    _no_escalate, qt_app, fake_flashrom, tmp_path, monkeypatch
+):
+    from flash_ops import BackupWorker
+
+    arglog = tmp_path / "args.log"
+    monkeypatch.setenv("FAKE_FLASHROM_MULTI", "1")
+    monkeypatch.setenv("FAKE_FLASHROM_ARGLOG", str(arglog))
+
+    out = tmp_path / "out.bin"
+    worker = BackupWorker(fake_flashrom, str(out))
+    oks = []
+    fails = []
+    worker.ok.connect(oks.append)
+    worker.fail.connect(fails.append)
+    worker.run()
+
+    assert fails == []
+    assert oks == [str(out)]
+    assert out.stat().st_size == 1024 * 1024
+    assert "-c W25Q80BV/W25Q80DV" in _flashrom_calls(arglog)[-1]

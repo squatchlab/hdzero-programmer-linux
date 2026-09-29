@@ -54,6 +54,11 @@ modules, docs, CI, and tests). No version bump yet.
 - `HttpWorker._stream_download` no longer crashes on a non-numeric
   `Content-Length` header (`ValueError` escaped the worker's failure
   handler); falls back to unknown-size streaming. (#81)
+- Backup / flash no longer fail on flashrom 1.4+ with "Multiple flash chip
+  definitions match the detected chip(s)" (W25Q80BV/W25Q80DV vs W25Q80RV,
+  seen on Race v3). Each privileged chain now probes first and, only when
+  flashrom reports ambiguity, passes `-c <first match>` to every operation.
+  Still one privilege prompt; older flashrom is unaffected. (#4)
 
 ## [0.3.0] - 2026-04-30
 

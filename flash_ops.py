@@ -168,6 +168,34 @@ def run_admin_streaming(
             proc.stdout.close()
 
 
+def _chip_probe_prelude(flashrom_q: str) -> str:
+    """Shell snippet that probes the chip and sets $HDZ_CHIP when ambiguous.
+
+    Newer flashrom (1.4+) ships several definitions sharing the W25Q80 JEDEC
+    ID (e.g. "W25Q80BV/W25Q80DV" and "W25Q80RV") and refuses to run without
+    `-c <chipname>`. Older flashrom names the same part "W25Q80.V", so a
+    hard-coded name would break those installs. Instead, probe once (no
+    operation) inside the same privileged chain and, only when flashrom
+    reports multiple matches, reuse the first "Found ... flash chip" name.
+    The definitions are the same part, so which one we pick doesn't matter.
+    The probe's exit code is ignored; the real operation reports failures.
+    """
+    return (
+        f"HDZ_PROBE=$({flashrom_q} -p ch341a_spi 2>&1); "
+        'printf "%s\\n" "$HDZ_PROBE"; '
+        "HDZ_CHIP=; "
+        'case "$HDZ_PROBE" in *"Multiple flash chip definitions"*) '
+        'HDZ_CHIP=$(printf "%s\\n" "$HDZ_PROBE" '
+        "| sed -n 's/.*Found .* flash chip \"\\([^\"]*\\)\".*/\\1/p' | head -n 1); "
+        'echo "Ambiguous chip definitions; using -c $HDZ_CHIP";; '
+        "esac; "
+    )
+
+
+# Expands to `-c "<name>"` after _chip_probe_prelude set $HDZ_CHIP, else nothing.
+_CHIP_ARG = '${HDZ_CHIP:+-c "$HDZ_CHIP"}'
+
+
 def make_padded_image_1mib(fw_path: str) -> str:
     with open(fw_path, "rb") as f:
         data = f.read()
@@ -228,15 +256,16 @@ class FlashWorker(QThread):
             parts: list[str] = []
             if self.backup_path:
                 parts.append(
-                    f"{flashrom_q} -p ch341a_spi -r {shlex.quote(self.backup_path)}"
+                    f"{flashrom_q} -p ch341a_spi {_CHIP_ARG} -r "
+                    f"{shlex.quote(self.backup_path)}"
                 )
-            parts.append(f"{flashrom_q} -p ch341a_spi -w {padded_q}")
+            parts.append(f"{flashrom_q} -p ch341a_spi {_CHIP_ARG} -w {padded_q}")
             # Explicit re-verify pass: re-reads the chip and diffs against the
             # padded image. flashrom's -w already verifies internally; this
             # second pass catches drift between write completion and end-of-op
             # and gives the user an audit line in the log.
-            parts.append(f"{flashrom_q} -p ch341a_spi -v {padded_q}")
-            cmd = " && ".join(parts)
+            parts.append(f"{flashrom_q} -p ch341a_spi {_CHIP_ARG} -v {padded_q}")
+            cmd = _chip_probe_prelude(flashrom_q) + " && ".join(parts)
 
             phases = "backup → write → verify" if self.backup_path else "write → verify"
             self.status.emit(f"Wait - Safe flash ({phases})")
@@ -308,8 +337,9 @@ class BackupWorker(QThread):
 
     def run(self) -> None:
         try:
-            cmd = (
-                f"{shlex.quote(self.flashrom)} -p ch341a_spi -r "
+            flashrom_q = shlex.quote(self.flashrom)
+            cmd = _chip_probe_prelude(flashrom_q) + (
+                f"{flashrom_q} -p ch341a_spi {_CHIP_ARG} -r "
                 f"{shlex.quote(self.out)}"
             )
             self.log.emit(f"→ {cmd}\n")
