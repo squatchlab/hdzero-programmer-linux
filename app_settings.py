@@ -41,6 +41,9 @@ def migrate_settings_once(
     short-circuits every rerun).
 
 
+def migrate_settings_once() -> None:
+    """Copy legacy `HDZero/Programmer` keys into the new scope on first run.
+
     Skipped if the sentinel `_migrated_from_legacy_org` is already set in
     the new scope, so reruns are free. Existing keys in the new scope are
     not overwritten — if a user sets a value under the new scope before
@@ -58,6 +61,11 @@ def migrate_settings_once(
         old = QSettings(LEGACY_SETTINGS_ORG, LEGACY_SETTINGS_APP)
     if new.value(_KEY_MIGRATED, False, type=bool):
         return
+    """
+    new = settings()
+    if new.value(_KEY_MIGRATED, False, type=bool):
+        return
+    old = QSettings(LEGACY_SETTINGS_ORG, LEGACY_SETTINGS_APP)
     for key in old.allKeys():
         if not new.contains(key):
             new.setValue(key, old.value(key))

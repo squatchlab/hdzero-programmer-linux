@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import IO, Callable
 
 from PyQt6.QtCore import QSize, Qt
+from PyQt6 import QtCore
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon, QPixmap, QTextCursor
 from PyQt6.QtWidgets import (
     QApplication,
@@ -44,6 +46,7 @@ from udev_check import (
 __version__ = "0.3.0"
 
 APP_TITLE = "HDZero Programmer (Linux) — SquatchLab"
+APP_TITLE = "HDZero Programmer Tool – by Gunther_FPV"
 APP_HEADER_TITLE = "HDZero Programmer (Linux)"
 
 FLASHROM_INSTALL_HINT = (
